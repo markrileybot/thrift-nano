@@ -1,0 +1,4 @@
+
+#define thrift-nano_VERSION_MAJOR @thrift-nano_VERSION_MAJOR@
+#define thrift-nano_VERSION_MINOR @thrift-nano_VERSION_MINOR@
+#define thrift-nano_VERSION_PATCH @thrift-nano_VERSION_PATCH@
