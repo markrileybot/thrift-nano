@@ -5,9 +5,9 @@ A thrift compiler and library suitable for tiny computers
 
 Building
 ========
-*`./build.sh`
+>`./build.sh`
 
-	> OR
+	OR
 
-*`mkdir build && cd build && cmake ../ && make`
+>`mkdir build && cd build && cmake ../ && make`
 
