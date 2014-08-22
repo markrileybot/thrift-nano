@@ -2,7 +2,10 @@
 #ifndef __MOWGLI_H__
 #define __MOWGLI_H__
 
+#include "mowgli/machine.h"
+#include "mowgli/constructor.h"
 #include "mowgli/stdinc.h"
+#include "mowgli/mutex.h"
 #include "mowgli/list.h"
 #include "mowgli/class.h"
 #include "mowgli/object.h"
@@ -13,5 +16,6 @@
 #include "mowgli/dictionary.h"
 #include "mowgli/patricia.h"
 #include "mowgli/index.h"
+#include "mowgli/bootstrap.h"
 
 #endif
