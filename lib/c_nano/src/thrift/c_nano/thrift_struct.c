@@ -20,6 +20,11 @@
 #include <thrift/c_glib/thrift.h>
 #include "thrift_struct.h"
 
+tn_struct_bootstrap()
+{
+	mowgli_object_class_init
+}
+
 G_DEFINE_ABSTRACT_TYPE(ThriftStruct, thrift_struct, G_TYPE_OBJECT)
 
 gint32

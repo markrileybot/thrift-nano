@@ -22,13 +22,14 @@
 
 #include <thrift/c_nano/protocol/thrift_protocol.h>
 
-
-typedef struct _ThriftStruct
+struct tn_struct_t;
+typedef int32_t (*tn_read_func_t)(tn_struct_t *object, tn_protocol_t *protocol);
+typedef int32_t (*tn_write_func_t)(tn_struct_t *object, tn_protocol_t *protocol);
+typedef struct
 {
-	int32_t (*read) (ThriftStruct *object, ThriftProtocol *protocol);
-				  
-	int32_t (*write) (ThriftStruct *object, ThriftProtocol *protocol);
-} ThriftStruct;
-
+	mowgli_object_t parent;
+	tn_read_func_t read;
+	tn_write_func_t write;
+} tn_struct_t;
 
 #endif

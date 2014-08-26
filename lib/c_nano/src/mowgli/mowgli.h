@@ -17,5 +17,6 @@
 #include "mowgli/patricia.h"
 #include "mowgli/index.h"
 #include "mowgli/bootstrap.h"
+#include "mowgli/mowgli_string.h"
 
 #endif
