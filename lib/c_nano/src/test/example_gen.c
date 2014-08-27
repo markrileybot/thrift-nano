@@ -31,7 +31,7 @@ tn_package_name_structb_read(void *data, tn_protocol_t *protocol, tn_transport_t
 	protocol->tn_read_struct_end();
 */
 }
-static tn_package_name_structb_t*
+tn_package_name_structb_t*
 tn_package_name_structb_init(tn_package_name_structb_t *ret)
 {
 	ret->strprop = NULL;
@@ -39,14 +39,14 @@ tn_package_name_structb_init(tn_package_name_structb_t *ret)
 	ret->parent.tn_read = tn_package_name_structb_read;
 	return ret;
 }
-static tn_package_name_structb_t *
+tn_package_name_structb_t *
 tn_package_name_structb_create()
 {
 	tn_package_name_structb_t *ret = (tn_package_name_structb_t*) mowgli_alloc(sizeof(tn_package_name_structb_t));
 	if( ret == NULL ) return NULL;
 	return tn_package_name_structb_init(ret);
 }
-static void
+void
 tn_package_name_structb_destroy(tn_package_name_structb_t *ret)
 {
 	if( ret ) mowgli_free(ret);
@@ -79,7 +79,7 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 	s->structprop = protocol->tn_read_struct(protocol, transport, s->structprop, &tmp);
 */
 }
-static tn_package_name_structa_t*
+tn_package_name_structa_t*
 tn_package_name_structa_init(tn_package_name_structa_t *ret)
 {
 	ret->strprop = NULL;
@@ -88,12 +88,12 @@ tn_package_name_structa_init(tn_package_name_structa_t *ret)
 	ret->parent.tn_read = tn_package_name_structa_read;
 	return ret;
 }
-static void
+void
 tn_package_name_structa_destroy(tn_package_name_structa_t *ret)
 {
 	if( ret ) mowgli_free(ret);
 }
-static tn_package_name_structa_t*
+tn_package_name_structa_t*
 tn_package_name_structa_create()
 {
 	tn_package_name_structa_t *ret = (tn_package_name_structa_t*) mowgli_alloc(sizeof(tn_package_name_structa_t));
@@ -103,7 +103,7 @@ tn_package_name_structa_create()
 
 
 // package/library level init
-static void
+void
 tn_package_name_init()
 {
 	// setup some things like write funcs and mowgli init

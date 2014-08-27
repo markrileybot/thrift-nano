@@ -5,6 +5,8 @@
 #include "mowgli/machine.h"
 #include "mowgli/constructor.h"
 #include "mowgli/stdinc.h"
+#include "mowgli/logger.h"
+#include "mowgli/assert.h"
 #include "mowgli/mutex.h"
 #include "mowgli/list.h"
 #include "mowgli/class.h"

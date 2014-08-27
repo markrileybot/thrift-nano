@@ -15,6 +15,10 @@ set(SOURCES
     mowgli/object.c
     mowgli/bootstrap.c
     mowgli/mowgli_string.c
+    mowgli/logger.c
+    mowgli/posix_mutexops.c
+    mowgli/win32_mutexops.c
+    mowgli/null_mutexops.c
 )
 
 set(TEST_SOURCES
@@ -28,4 +32,7 @@ set(TEST_SOURCES
 
 add_library(thrift-nano SHARED	${SOURCES})
 add_library(thrift-nano-static 	${SOURCES})
+
+find_package(Threads REQUIRED)
 add_executable(thrift-nano-test	${TEST_SOURCES})
+target_link_libraries(thrift-nano-test ${CMAKE_THREAD_LIBS_INIT})

@@ -12,7 +12,7 @@ typedef struct
 } tn_struct_t;
 
 // generic IO funcs
-static size_t tn_write_struct(void *data, tn_protocol_t *protocol, tn_transport_t *transport);
-static size_t tn_read_struct(void *data, tn_protocol_t *protocol, tn_transport_t *transport);
+size_t tn_write_struct(void *data, tn_protocol_t *protocol, tn_transport_t *transport);
+size_t tn_read_struct(void *data, tn_protocol_t *protocol, tn_transport_t *transport);
 
 #endif

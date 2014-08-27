@@ -18,7 +18,7 @@ static size_t tn_protocol_write_int64(tn_protocol_t *self, tn_transport_t *trans
 static size_t tn_protocol_write_char(tn_protocol_t *self, tn_transport_t *transport, char v) {return 0;}
 static size_t tn_protocol_write_byte(tn_protocol_t *self, tn_transport_t *transport, char v) {return 0;}
 static size_t tn_protocol_write_double(tn_protocol_t *self, tn_transport_t *transport, double v) {return 0;}
-static tn_protocol_t*
+tn_protocol_t*
 tn_protocol_init(tn_protocol_t *protocol)
 {
 	protocol->tn_write_struct  		 = &tn_protocol_write_struct;
@@ -38,11 +38,11 @@ tn_protocol_init(tn_protocol_t *protocol)
 	protocol->tn_write_double        = &tn_protocol_write_double;
 	return protocol;
 }
-static tn_protocol_t*
+tn_protocol_t*
 tn_protocol_create()
 {
 	tn_protocol_t *protocol = malloc(sizeof(tn_protocol_t));
-	if( protocol != NULL ) tn_protocol_init_default(protocol);
+	if( protocol != NULL ) tn_protocol_init(protocol);
 	return protocol;
 }
 
@@ -155,7 +155,7 @@ tn_protocol_binary_write_double(tn_protocol_t *self, tn_transport_t *transport, 
 {
 	return transport->tn_write(transport, &v, sizeof(double));
 }
-static tn_protocol_t*
+tn_protocol_t*
 tn_protocol_binary_init(tn_protocol_binary_t *binproto)
 {
 	tn_protocol_t *protocol = (tn_protocol_t*) binproto;
@@ -173,7 +173,7 @@ tn_protocol_binary_init(tn_protocol_binary_t *binproto)
 	protocol->tn_write_double        = &tn_protocol_binary_write_double;
 	return protocol;
 }
-static tn_protocol_t*
+tn_protocol_t*
 tn_protocol_binary_create()
 {
 	tn_protocol_binary_t *protocol = malloc(sizeof(tn_protocol_binary_t));

@@ -10,8 +10,8 @@ typedef struct tn_transport_t
 	size_t (*tn_read)(struct tn_transport_t *self, void *buf, size_t len);
 	size_t (*tn_write)(struct tn_transport_t *self, void *buf, size_t len);
 } tn_transport_t;
-static tn_transport_t* tn_transport_init(tn_transport_t *self);
-static tn_transport_t* tn_transport_create();
+tn_transport_t* tn_transport_init(tn_transport_t *self);
+tn_transport_t* tn_transport_create();
 
 typedef struct tn_transport_memory_t
 {
@@ -21,7 +21,7 @@ typedef struct tn_transport_memory_t
 	size_t len;
 	void (*tn_reset)(struct tn_transport_t* self);
 } tn_transport_memory_t;
-static tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self);
-static tn_transport_t* tn_transport_memory_create(size_t bufferSize);
+tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self);
+tn_transport_t* tn_transport_memory_create(size_t bufferSize);
 
 #endif
