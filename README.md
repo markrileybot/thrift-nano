@@ -9,14 +9,17 @@ I like thrift but it doesn't support small computers very well.  GLIB is just to
 2. A more standard struct generator.  This generator will create structs that may be written to standard thrift protocols/transports.
 
 The library should support including only those transports/protocols required at compile time.
+
 mowgli
 ------
 Thrift-nano is using a subset of mowgli as a partial replacement for GLIB.  The entire mowgli library is not used as it isn't required.
+
 Roadmap
 =======
-1. Create a small thrift library that allows clients to compile in only those components required.
+1. Create a small thrift library that allows clients to compile in only those components required.  The library components are 1) transports, 2) protocols, 3) services.
 2. Create a generator to generate simple structs.
 3. Create a generator to generate thrift compatable structs.
+
 Building
 ========
 >`./build.sh`
