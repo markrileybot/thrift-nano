@@ -55,6 +55,7 @@ tn_transport_memory_read(tn_transport_t *self, void *buf, size_t len)
 static size_t
 tn_transport_memory_write(tn_transport_t *self, void *buf, size_t len)
 {
+	printf("Write some data %d\n", len);
 	tn_transport_memory_t *mem = (tn_transport_memory_t*) self;
 	len = MIN(len, mem->len - mem->pos);
 	memcpy(mem->buf+mem->pos, buf, len);
@@ -91,6 +92,7 @@ tn_transport_memory_create(size_t bufferSize)
 		return NULL;
 	}
 	tn_transport_memory_init(t);
+	t->len = bufferSize;
 	return (tn_transport_t*) t;
 }
 

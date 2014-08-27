@@ -2,19 +2,24 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
+#include <thrift_types.h>
 #include <mowgli/mowgli.h>
 #include <transport.h>
 
 typedef struct tn_protocol_t
 {
 
+	// fields and such
+	size_t (*tn_write_field_begin)(struct tn_protocol_t *self, tn_transport_t *transport, tn_type_t fieldType, int16_t fieldId);
+	size_t (*tn_write_field_end)(struct tn_protocol_t *self, tn_transport_t *transport);
+	size_t (*tn_write_field_stop)(struct tn_protocol_t *self, tn_transport_t *transport);
+
 	// containers
-	size_t (*tn_write_struct)(struct tn_protocol_t *self, tn_transport_t *transport, void *s);
 	size_t (*tn_write_struct_begin)(struct tn_protocol_t *self, tn_transport_t *transport, void *s);
 	size_t (*tn_write_struct_end)(struct tn_protocol_t *self, tn_transport_t *transport);
-	size_t (*tn_write_list_begin)(struct tn_protocol_t *self, tn_transport_t *transport, mowgli_list_t *list);
+	size_t (*tn_write_list_begin)(struct tn_protocol_t *self, tn_transport_t *transport, tn_type_t elemType, int32_t size);
 	size_t (*tn_write_list_end)(struct tn_protocol_t *self, tn_transport_t *transport);
-	size_t (*tn_write_map_begin)(struct tn_protocol_t *self, tn_transport_t *transport, mowgli_dictionary_t *map);
+	size_t (*tn_write_map_begin)(struct tn_protocol_t *self, tn_transport_t *transport, tn_type_t keyType, tn_type_t valueType, int32_t size);
 	size_t (*tn_write_map_end)(struct tn_protocol_t *self, tn_transport_t *transport);
 	size_t (*tn_write_bytes)(struct tn_protocol_t *self, tn_transport_t *transport, void *s, size_t len);
 
@@ -23,8 +28,7 @@ typedef struct tn_protocol_t
 	size_t (*tn_write_int16)(struct tn_protocol_t *self, tn_transport_t *transport, int16_t v);
 	size_t (*tn_write_int32)(struct tn_protocol_t *self, tn_transport_t *transport, int32_t v);
 	size_t (*tn_write_int64)(struct tn_protocol_t *self, tn_transport_t *transport, int64_t v);
-	size_t (*tn_write_char)(struct tn_protocol_t *self, tn_transport_t *transport, char v);
-	size_t (*tn_write_byte)(struct tn_protocol_t *self, tn_transport_t *transport, char v);
+	size_t (*tn_write_byte)(struct tn_protocol_t *self, tn_transport_t *transport, int8_t v);
 	size_t (*tn_write_double)(struct tn_protocol_t *self, tn_transport_t *transport, double v);
 } tn_protocol_t;
 tn_protocol_t* tn_protocol_init(tn_protocol_t *protocol);
