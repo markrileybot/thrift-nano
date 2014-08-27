@@ -3,7 +3,7 @@ thrift-nano
 A thrift compiler and library for tiny computers
 The idea
 ========
-I like thrift but it doesn't support small computers very well.  GLIB is just too fat for some really small computers.  The goal of this project is to provide 2 additional generators and a library that will fit on a computer with >= 256k flash.  The generators it should include are:
+I like thrift but it doesn't support small computers very well.  GLIB is just too fat for some really small computers.  The goal of this project is to provide 2 additional generators and a library that will fit on a computer with 256k flash.  The generators it should include are:
 
 1. A simple struct generator.  This generator will not support any standard thrift protocols and will not support optional values.
 2. A more standard struct generator.  This generator will create structs that may be written to standard thrift protocols/transports.
