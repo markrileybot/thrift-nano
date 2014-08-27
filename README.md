@@ -12,6 +12,11 @@ The library should support including only those transports/protocols required at
 mowgli
 ------
 Thrift-nano is using a subset of mowgli as a partial replacement for GLIB.  The entire mowgli library is not used as it isn't required.
+Roadmap
+=======
+1. Create a small thrift library that allows clients to compile in only those components required.
+2. Create a generator to generate simple structs.
+3. Create a generator to generate thrift compatable structs.
 Building
 ========
 >`./build.sh`
