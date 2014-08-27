@@ -19,7 +19,7 @@ typedef struct tn_transport_memory_t
 	void *buf;
 	size_t pos;
 	size_t len;
-	void (*tn_reset)(struct tn_transport_t* self);
+	void (*tn_reset)(struct tn_transport_memory_t* self);
 } tn_transport_memory_t;
 tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self);
 tn_transport_t* tn_transport_memory_create(size_t bufferSize);

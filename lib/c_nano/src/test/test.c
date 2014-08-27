@@ -2,6 +2,9 @@
 #include <thrift_nano.h>
 #include <example_gen.h>
 #include <stdio.h>
+#include <time.h>
+
+#define CALLS 10000000
 
 tn_package_name_structa_t *structa;
 tn_transport_t *transport;
@@ -30,9 +33,24 @@ int main(int argc, char** argv)
 		printf("Failed to create transport\n");
 		return -1;
 	}
+	
+	tn_transport_memory_t *t = (tn_transport_memory_t*) transport;
 
-	size_t bytes = tn_write_struct(structa, protocol, transport);
-	size_t pos = ((tn_transport_memory_t*) transport)->pos;
+	size_t bytes;
+	size_t pos;
+	struct timeval start, end;
+	size_t i = 0;
+	gettimeofday(&start, NULL);
+	for( ; i < CALLS; i++ )
+	{
+		bytes = tn_write_struct(structa, protocol, transport);
+		pos = t->pos;
+		t->tn_reset(t);
+	}
+	gettimeofday(&end, NULL);
+	double total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
+	double pc = total/CALLS;
+	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 	
 
 	printf("Looking good!  bytes=%d, pos=%d\n", bytes, pos);
