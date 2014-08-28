@@ -12,7 +12,7 @@ The library should support including only those transports/protocols/services re
 
 mowgli
 ------
-Thrift-nano is using a subset of mowgli as a partial replacement for GLIB.  The entire mowgli library is not used as it isn't required.  We will be whittling the use of mowgli down to the bare essentials as we go.
+Thrift-nano is using a subset of mowgli as a partial replacement for glib.  The entire mowgli library is not used as it isn't required.  We will be whittling the use of mowgli down to the bare essentials as we go.
 
 Roadmap
 =======
