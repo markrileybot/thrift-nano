@@ -38,7 +38,6 @@ MOWGLI_BOOTSTRAP_FUNC(mowgli_bootstrap_real)
 
 	/* initial bootstrap */
 	mowgli_node_bootstrap();
-	mowgli_object_class_bootstrap();
 	mowgli_allocation_policy_bootstrap();
 	mowgli_allocator_bootstrap();
 

@@ -46,7 +46,6 @@ _mowgli_bootstrap_free(void *ptr)
 
 static mowgli_allocation_policy_t _mowgli_allocator_bootstrap =
 {
-	{ 0 },
 	_mowgli_bootstrap_alloc,
 	_mowgli_bootstrap_free
 };

@@ -29,7 +29,6 @@ typedef void (*mowgli_deallocation_func_t)(void *ptr);
 
 typedef struct
 {
-	mowgli_object_t parent;
 	mowgli_allocation_func_t allocate;
 	mowgli_deallocation_func_t deallocate;
 } mowgli_allocation_policy_t;

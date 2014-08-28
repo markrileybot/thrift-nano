@@ -9,8 +9,6 @@
 #include "mowgli/assert.h"
 #include "mowgli/mutex.h"
 #include "mowgli/list.h"
-#include "mowgli/class.h"
-#include "mowgli/object.h"
 #include "mowgli/allocation_policy.h"
 #include "mowgli/allocator.h"
 #include "mowgli/alloc.h"

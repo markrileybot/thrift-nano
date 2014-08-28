@@ -3,7 +3,8 @@ project (thrift-nano)
 set (thrift-nano_VERSION_MAJOR 0)
 set (thrift-nano_VERSION_MINOR 1)
 
-set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -Os -s")
+#set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -Os -s")
+set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS 	"${CMAKE_SHARED_LINKER_FLAGS} -flto")
 
 configure_file (

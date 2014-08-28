@@ -11,8 +11,6 @@ set(SOURCES
     mowgli/patricia.c
     mowgli/index.c
     mowgli/list.c
-    mowgli/class.c
-    mowgli/object.c
     mowgli/bootstrap.c
     mowgli/mowgli_string.c
     mowgli/logger.c

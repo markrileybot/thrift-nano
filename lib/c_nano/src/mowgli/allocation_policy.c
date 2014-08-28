@@ -23,7 +23,6 @@
 
 #include "mowgli.h"
 
-static mowgli_object_class_t klass;
 static mowgli_patricia_t *mowgli_allocation_policy_dict = NULL;
 
 static void
@@ -34,8 +33,6 @@ void
 mowgli_allocation_policy_bootstrap(void)
 {
 	mowgli_allocation_policy_dict = mowgli_patricia_create(_allocation_policy_key_canon);
-
-	mowgli_object_class_init(&klass, "mowgli.allocation_policy", NULL, FALSE);
 }
 
 mowgli_allocation_policy_t *
@@ -50,7 +47,6 @@ mowgli_allocation_policy_create(const char *name, mowgli_allocation_func_t alloc
 		return policy;
 
 	policy = mowgli_alloc(sizeof(mowgli_allocation_policy_t));
-	mowgli_object_init_from_class(mowgli_object(policy), name, &klass);
 
 	policy->allocate = allocator;
 	policy->deallocate = deallocator;
