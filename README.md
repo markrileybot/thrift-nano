@@ -18,7 +18,7 @@ Roadmap
 =======
 1. Create a small thrift library that will support all thrift types and the binary and compact protocols.  These protocols should be compiled out by default and only included with -DTHRIFT_NANO_PROTOCOL_<BINARY|COMPACT>
 2. Create a generator to generate simple structs.
-3. Create a generator to generate thrift compatable structs.
+3. Create a generator to generate thrift compatible structs.
 4. Implement more thrift features like services.  These features should still require inclusion with preprocessor macros.
 
 Building
