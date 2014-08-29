@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 2.6)
 project (thrift-nano)
 set (thrift-nano_VERSION_MAJOR 0)
 set (thrift-nano_VERSION_MINOR 1)
+set (thrift-nano_VERSION_PATCH 0)
 
 set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -Os -s")
 #set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -ggdb")
