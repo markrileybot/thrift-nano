@@ -49,7 +49,7 @@ tn_transport_memory_read(tn_transport_t *self, void *buf, size_t len)
 	len = MIN(len, mem->len - mem->pos);
 	memcpy(buf, mem->buf+mem->pos, len);
 	mem->pos += len;
-    return 0;
+    return len;
 }
 
 static size_t

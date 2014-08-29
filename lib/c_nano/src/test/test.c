@@ -4,26 +4,51 @@
 #include <stdio.h>
 #include <time.h>
 
-#define CALLS 10000000
+#define CALLS 1
+#define STRING1 "Heres some string data"
+#define STRING2 ".  Here is some more data"
 
 tn_package_name_structa_t *structa;
+tn_package_name_structa_t *structa2;
 tn_transport_t *transport;
 tn_protocol_t *protocol;
+
+tn_package_name_structa_t* 
+create_structa()
+{
+	tn_package_name_structa_t *s;
+	if((s = tn_package_name_structa_create()) == NULL)
+	{
+		printf("Failed to create structa\n");
+		return NULL;
+	}
+	if((s->structprop = tn_package_name_structb_create()) == NULL)
+	{
+		printf("Failed to create structb\n");
+		return NULL;
+	}
+	if((s->strprop = mowgli_string_create()) == NULL )
+	{
+		printf("Failed to create string\n");
+		return NULL;
+	}
+	return s;
+}
 
 int main(int argc, char** argv)
 {
 	tn_package_name_init();
-	if((structa = tn_package_name_structa_create()) == NULL)
+	if((structa = create_structa()) == NULL)
 	{
 		printf("Failed to create structa\n");
 		return -1;
 	}
-	if((structa->structprop = tn_package_name_structb_create()) == NULL)
+	if((structa2 = create_structa()) == NULL)
 	{
-		printf("Failed to create structb\n");
+		printf("Failed to create structa\n");
 		return -1;
 	}
-	if((protocol = tn_protocol_binary_create()) == NULL)
+	if((protocol = (tn_protocol_t*)tn_protocol_binary_create()) == NULL)
 	{	
 		printf("Failed to create protocol\n");
 		return -1;
@@ -33,6 +58,9 @@ int main(int argc, char** argv)
 		printf("Failed to create transport\n");
 		return -1;
 	}
+	mowgli_string_append(structa->strprop, STRING1, sizeof(STRING1));
+	mowgli_string_append(structa->strprop, STRING2, sizeof(STRING2));
+	
 	
 	tn_transport_memory_t *t = (tn_transport_memory_t*) transport;
 
@@ -52,6 +80,12 @@ int main(int argc, char** argv)
 	double pc = total/CALLS;
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 	
+	printf("Test %s\n", structa->strprop->str);
+	t->tn_reset(t);
+	pos = t->pos;
+	printf("Looking good!  bytes=%d, pos=%d\n", bytes, pos);
+	tn_read_struct(structa2, protocol, transport);
+	printf("Test %s\n", structa2->strprop->str);
 
 	printf("Looking good!  bytes=%d, pos=%d\n", bytes, pos);
 	return 0;

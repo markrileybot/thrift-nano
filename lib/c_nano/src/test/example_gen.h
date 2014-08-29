@@ -19,7 +19,6 @@ typedef struct
 } tn_package_name_structb_t;
 tn_package_name_structb_t* tn_package_name_structb_init(tn_package_name_structb_t *ret);
 tn_package_name_structb_t* tn_package_name_structb_create();
-void tn_package_name_structb_destroy(tn_package_name_structb_t *ret);
 
 
 // struct a
@@ -31,7 +30,6 @@ typedef struct
 } tn_package_name_structa_t;
 tn_package_name_structa_t* tn_package_name_structa_init(tn_package_name_structa_t *ret);
 tn_package_name_structa_t* tn_package_name_structa_create();
-void tn_package_name_structa_destroy(tn_package_name_structa_t *ret);
 
 // package/library level init
 void tn_package_name_init();
