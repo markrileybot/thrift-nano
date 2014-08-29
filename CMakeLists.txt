@@ -14,6 +14,6 @@ configure_file (
 
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src")
-include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src/thrift/c_nano")
+include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src/thrift")
 include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src/test")
 add_subdirectory(lib/c_nano/src)

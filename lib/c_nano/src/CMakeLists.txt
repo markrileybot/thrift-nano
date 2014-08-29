@@ -16,9 +16,9 @@ set(SOURCES
     mowgli/posix_mutexops.c
     mowgli/win32_mutexops.c
     mowgli/null_mutexops.c
-	thrift/c_nano/protocol.c
-	thrift/c_nano/struct.c
-	thrift/c_nano/transport.c
+	thrift/protocol.c
+	thrift/struct.c
+	thrift/transport.c
 )
 
 set(TEST_SOURCES

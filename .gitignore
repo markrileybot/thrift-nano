@@ -23,4 +23,13 @@
 *.hex
 
 # Build dir
-build
+/build
+
+# temp files
+*~
+~*.swp
+
+# ide files
+*.anjuta*
+*.idea
+*.iml
