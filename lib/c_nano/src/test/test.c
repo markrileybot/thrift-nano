@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define CALLS 1
+#define CALLS 10000000
 #define STRING1 "Heres some string data"
 #define STRING2 ".  Here is some more data"
 
@@ -43,11 +43,6 @@ int main(int argc, char** argv)
 		printf("Failed to create structa\n");
 		return -1;
 	}
-	if((structa2 = create_structa()) == NULL)
-	{
-		printf("Failed to create structa\n");
-		return -1;
-	}
 	if((protocol = (tn_protocol_t*)tn_protocol_binary_create()) == NULL)
 	{	
 		printf("Failed to create protocol\n");
@@ -58,9 +53,11 @@ int main(int argc, char** argv)
 		printf("Failed to create transport\n");
 		return -1;
 	}
-	mowgli_string_append(structa->strprop, STRING1, sizeof(STRING1));
-	mowgli_string_append(structa->strprop, STRING2, sizeof(STRING2));
-	
+	mowgli_string_append(structa->strprop, STRING1, sizeof(STRING1)-1);
+	mowgli_string_append(structa->strprop, STRING2, sizeof(STRING2)-1);
+
+	// unfilled struct gets filled by tn_read_struct
+	structa2 = tn_package_name_structa_create();
 	
 	tn_transport_memory_t *t = (tn_transport_memory_t*) transport;
 
