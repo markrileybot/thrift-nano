@@ -170,10 +170,6 @@ tn_protocol_binary_read_field_stop(tn_protocol_t *self, tn_transport_t *transpor
 	return 1;
 }
 static size_t 
-tn_protocol_binary_read_struct_begin(tn_protocol_t *self, tn_transport_t *transport)
-{
-}
-static size_t 
 tn_protocol_binary_read_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *elemType, int32_t *size)
 {
 	if( self->tn_read_type(self, transport, elemType) <= 0 ) return -1;
