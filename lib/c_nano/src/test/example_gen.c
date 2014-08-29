@@ -58,6 +58,7 @@ tn_package_name_structb_read(void *data, tn_protocol_t *protocol, tn_transport_t
 			case 1:
 				if( type == T_STRING )
 				{
+					if( self->strprop == NULL ) self->strprop = mowgli_string_create();
 					if( protocol->tn_read_string(protocol, transport, self->strprop) < 0 ) return -1;
 				}
 				break;
@@ -142,6 +143,7 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 			case 1:
 				if( type == T_STRING )
 				{
+					if( self->strprop == NULL ) self->strprop = mowgli_string_create();
 					if( protocol->tn_read_string(protocol, transport, self->strprop) < 0 ) return -1;
 				}
 				else
@@ -152,10 +154,7 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 			case 2:
 				if( type == T_STRUCT )
 				{
-					if( self->structprop == NULL )
-					{
-						self->structprop = tn_package_name_structb_create();
-					}
+					if( self->structprop == NULL ) self->structprop = tn_package_name_structb_create();
 					tn_read_struct(self->structprop, protocol, transport);
 				}
 				else
