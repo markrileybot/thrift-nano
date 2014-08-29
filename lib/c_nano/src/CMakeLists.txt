@@ -17,15 +17,15 @@ set(SOURCES
     mowgli/posix_mutexops.c
     mowgli/win32_mutexops.c
     mowgli/null_mutexops.c
+	thrift/c_nano/protocol.c
+	thrift/c_nano/struct.c
+	thrift/c_nano/transport.c
 )
 
 set(TEST_SOURCES
 	${SOURCES}
 	test/example_gen.c
-	test/protocol.c
-	test/struct.c
 	test/test.c
-	test/transport.c
 )
 
 add_library(thrift-nano SHARED	${SOURCES})

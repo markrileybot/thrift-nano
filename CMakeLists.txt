@@ -3,8 +3,8 @@ project (thrift-nano)
 set (thrift-nano_VERSION_MAJOR 0)
 set (thrift-nano_VERSION_MINOR 1)
 
-#set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -Os -s")
-set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -ggdb")
+set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -Os -s")
+#set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -ggdb")
 set(CMAKE_SHARED_LINKER_FLAGS 	"${CMAKE_SHARED_LINKER_FLAGS} -flto")
 
 configure_file (
@@ -14,5 +14,6 @@ configure_file (
 
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src")
+include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src/thrift/c_nano")
 include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src/test")
 add_subdirectory(lib/c_nano/src)
