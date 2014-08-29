@@ -33,11 +33,9 @@ typedef struct
 	mowgli_deallocation_func_t deallocate;
 } mowgli_allocation_policy_t;
 
-mowgli_allocation_policy_t *mowgli_allocation_policy_create(const char *name, mowgli_allocation_func_t allocator, mowgli_deallocation_func_t deallocator);
-mowgli_allocation_policy_t *mowgli_allocation_policy_lookup(const char *name);
+mowgli_allocation_policy_t *mowgli_allocation_policy_create(mowgli_allocation_func_t allocator, mowgli_deallocation_func_t deallocator);
 
 /* for mowgli_alloc, et. al */
 void mowgli_allocator_set_policy(mowgli_allocation_policy_t *policy);
-void mowgli_allocator_set_policy_by_name(const char *name);
 
 #endif

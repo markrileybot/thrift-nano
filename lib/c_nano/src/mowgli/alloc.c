@@ -215,23 +215,3 @@ mowgli_allocator_set_policy(mowgli_allocation_policy_t *policy)
 	_mowgli_allocator = policy;
 }
 
-/*
- * \brief Sets the mowgli.allocation_policy used by the allocation primitives,
- * when given a name.
- *
- * \param name The name of the policy to use.
- */
-void
-mowgli_allocator_set_policy_by_name(const char *name)
-{
-	mowgli_allocation_policy_t *policy;
-
-	return_if_fail(name != NULL);
-
-	policy = mowgli_allocation_policy_lookup(name);
-
-	if (policy == NULL)
-		return;
-
-	mowgli_allocator_set_policy(policy);
-}

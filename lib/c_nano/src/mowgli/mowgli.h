@@ -14,7 +14,6 @@
 #include "mowgli/alloc.h"
 #include "mowgli/heap.h"
 #include "mowgli/dictionary.h"
-#include "mowgli/patricia.h"
 #include "mowgli/index.h"
 #include "mowgli/bootstrap.h"
 #include "mowgli/mowgli_string.h"

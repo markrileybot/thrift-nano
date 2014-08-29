@@ -24,8 +24,6 @@
 #include "mowgli.h"
 
 extern void mowgli_node_bootstrap(void);
-extern void mowgli_object_class_bootstrap(void);
-extern void mowgli_allocation_policy_bootstrap(void);
 extern void mowgli_allocator_bootstrap(void);
 
 /* TODO: rename to mowgli_bootstrap next time there is a LIB_MAJOR bump */
@@ -38,7 +36,6 @@ MOWGLI_BOOTSTRAP_FUNC(mowgli_bootstrap_real)
 
 	/* initial bootstrap */
 	mowgli_node_bootstrap();
-	mowgli_allocation_policy_bootstrap();
 	mowgli_allocator_bootstrap();
 
 	/* now that we're bootstrapped, we can use a more optimised allocator

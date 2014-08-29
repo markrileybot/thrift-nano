@@ -23,44 +23,16 @@
 
 #include "mowgli.h"
 
-static mowgli_patricia_t *mowgli_allocation_policy_dict = NULL;
-
-static void
-_allocation_policy_key_canon(char *str)
-{ }
-
-void
-mowgli_allocation_policy_bootstrap(void)
-{
-	mowgli_allocation_policy_dict = mowgli_patricia_create(_allocation_policy_key_canon);
-}
-
 mowgli_allocation_policy_t *
-mowgli_allocation_policy_create(const char *name, mowgli_allocation_func_t allocator, mowgli_deallocation_func_t deallocator)
+mowgli_allocation_policy_create(mowgli_allocation_func_t allocator, mowgli_deallocation_func_t deallocator)
 {
 	mowgli_allocation_policy_t *policy;
-
-	if (mowgli_allocation_policy_dict == NULL)
-		mowgli_allocation_policy_dict = mowgli_patricia_create(_allocation_policy_key_canon);
-
-	if ((policy = mowgli_patricia_retrieve(mowgli_allocation_policy_dict, name)))
-		return policy;
 
 	policy = mowgli_alloc(sizeof(mowgli_allocation_policy_t));
 
 	policy->allocate = allocator;
 	policy->deallocate = deallocator;
 
-	mowgli_patricia_add(mowgli_allocation_policy_dict, name, policy);
-
 	return policy;
 }
 
-mowgli_allocation_policy_t *
-mowgli_allocation_policy_lookup(const char *name)
-{
-	if (mowgli_allocation_policy_dict == NULL)
-		mowgli_allocation_policy_dict = mowgli_patricia_create(_allocation_policy_key_canon);
-
-	return mowgli_patricia_retrieve(mowgli_allocation_policy_dict, name);
-}

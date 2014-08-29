@@ -41,6 +41,5 @@ mowgli_allocator_func_free(void *ptr)
 void
 mowgli_allocator_bootstrap(void)
 {
-	mowgli_allocator_malloc = mowgli_allocation_policy_create("malloc", mowgli_allocator_func_malloc,
-								  mowgli_allocator_func_free);
+	mowgli_allocator_malloc = mowgli_allocation_policy_create(mowgli_allocator_func_malloc, mowgli_allocator_func_free);
 }
