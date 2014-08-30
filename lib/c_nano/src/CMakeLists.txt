@@ -8,7 +8,6 @@ set(SOURCES
     mowgli/mutex.c
     mowgli/heap.c
     mowgli/dictionary.c
-    mowgli/index.c
     mowgli/list.c
     mowgli/bootstrap.c
     mowgli/mowgli_string.c
