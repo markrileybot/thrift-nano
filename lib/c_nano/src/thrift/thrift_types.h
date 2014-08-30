@@ -2,6 +2,9 @@
 #ifndef __THRIFT_TYPES_H__
 #define __THRIFT_TYPES_H__
 
+#include <stddef.h>
+#include <sys/types.h>
+
 /**
  * Enumerated definition of the types that the Thrift protocol supports.
  * Take special note of the T_END type which is used specifically to mark
@@ -38,5 +41,25 @@ typedef enum {
   T_EXCEPTION = 3,
   T_ONEWAY    = 4
 } tn_message_type_t;
+
+
+/**
+ * A list type that copies data into an internal buffer.  The mowgli list is nice
+ * but it's a little more complicated than we need.
+ */
+typedef struct
+{
+	void *data;
+	size_t elem_size;
+	size_t elem_count;
+	size_t elem_cap;
+	tn_type_t type; 
+} tn_list_t;
+void* tn_list_append(tn_list_t *list);
+void* tn_list_get(tn_list_t *list, size_t i);
+void tn_list_remove(tn_list_t *list, size_t i);
+void tn_list_clear(tn_list_t *list);
+tn_list_t* tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn_type_t type);
+tn_list_t* tn_list_create(size_t elem_size, size_t elem_count, tn_type_t type);
 
 #endif

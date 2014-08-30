@@ -89,7 +89,7 @@ tn_protocol_create()
 static size_t
 tn_protocol_binary_write_field_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t fieldType, int16_t fieldId)
 {
-	if( self->tn_write_byte(self, transport, fieldType) <= 0 ) return -1;
+	if( self->tn_write_byte(self, transport, (int8_t)fieldType) <= 0 ) return -1;
 	if( self->tn_write_int16(self, transport, fieldId) <= 0 ) return -1;
 	return 3;
 }
@@ -106,15 +106,15 @@ tn_protocol_binary_write_struct_begin(tn_protocol_t *self, tn_transport_t *trans
 static size_t 
 tn_protocol_binary_write_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t elemType, int32_t size)
 {
-	if( self->tn_write_byte(self, transport, elemType) <= 0 ) return -1;
+	if( self->tn_write_byte(self, transport, (int8_t)elemType) <= 0 ) return -1;
 	if( self->tn_write_int32(self, transport, size) <= 0 ) return -1;
 	return 5;
 }
 static size_t 
 tn_protocol_binary_write_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t keyType, tn_type_t valueType, int32_t size)
 {
-	if( self->tn_write_byte(self, transport, keyType) <= 0 ) return -1;
-	if( self->tn_write_byte(self, transport, valueType) <= 0 ) return -1;
+	if( self->tn_write_byte(self, transport, (int8_t)keyType) <= 0 ) return -1;
+	if( self->tn_write_byte(self, transport, (int8_t)valueType) <= 0 ) return -1;
 	if( self->tn_write_int32(self, transport, size) <= 0 ) return -1;
 	return 6;
 }
@@ -158,7 +158,7 @@ tn_protocol_binary_write_double(tn_protocol_t *self, tn_transport_t *transport, 
 static size_t
 tn_protocol_binary_read_field_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *fieldType, int16_t *fieldId)
 {
-	if( self->tn_read_type(self, transport, fieldType) <= 0 ) return -1;
+	if( self->tn_read_type(self, transport, fieldType) <= 0 ) return -1;	
 	if( *fieldType == T_STOP ) return 1;
 	if( self->tn_read_int16(self, transport, fieldId) <= 0 ) return -1;
 	return 3;
@@ -240,7 +240,10 @@ tn_protocol_binary_read_double(tn_protocol_t *self, tn_transport_t *transport, d
 static size_t 
 tn_protocol_binary_read_type(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *v)
 {
-	return transport->tn_read(transport, v, sizeof(int8_t));
+	int8_t t;
+	transport->tn_read(transport, &t, sizeof(int8_t));
+	*v = t;
+	return 1;
 }
 tn_protocol_binary_t*
 tn_protocol_binary_init(tn_protocol_binary_t *binproto)

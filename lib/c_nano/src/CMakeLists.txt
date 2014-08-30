@@ -16,6 +16,7 @@ set(SOURCES
     mowgli/posix_mutexops.c
     mowgli/win32_mutexops.c
     mowgli/null_mutexops.c
+	thrift/thrift_types.c	
 	thrift/protocol.c
 	thrift/struct.c
 	thrift/transport.c

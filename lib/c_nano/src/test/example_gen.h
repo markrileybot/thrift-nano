@@ -27,6 +27,10 @@ typedef struct
 	tn_struct_t parent;
 	mowgli_string_t *strprop;
 	tn_package_name_structb_t *structprop;
+	tn_list_t *listprop;
+	mowgli_dictionary_t *mapprop;
+	tn_type_t mapprop_keytype;
+	tn_type_t mapprop_valtype;
 } tn_package_name_structa_t;
 tn_package_name_structa_t* tn_package_name_structa_init(tn_package_name_structa_t *ret);
 tn_package_name_structa_t* tn_package_name_structa_create();

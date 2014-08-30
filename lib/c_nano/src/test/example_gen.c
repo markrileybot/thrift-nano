@@ -104,6 +104,8 @@ tn_package_name_structb_create()
 static size_t
 tn_package_name_structa_write(void *data, tn_protocol_t *protocol, tn_transport_t *transport)
 {
+	size_t listprop_count, i;
+	int32_t *v;
 	tn_package_name_structa_t *s = (tn_package_name_structa_t*) data;	
 	protocol->tn_write_struct_begin(protocol, transport, data);
 	if( s->strprop != NULL && s->strprop->pos > 0 )
@@ -118,6 +120,18 @@ tn_package_name_structa_write(void *data, tn_protocol_t *protocol, tn_transport_
 		tn_write_struct(s->structprop, protocol, transport);
 		protocol->tn_write_field_end(protocol, transport);
 	}
+	if( s->listprop != NULL )
+	{
+		listprop_count = s->listprop->elem_count;
+		protocol->tn_write_field_begin(protocol, transport, T_LIST, 3);
+		protocol->tn_write_list_begin(protocol, transport, s->listprop->type, listprop_count);
+		for( i = 0; i < listprop_count; i++ )
+		{
+			v = tn_list_get(s->listprop, i);
+			protocol->tn_write_int32(protocol, transport, *v);
+		}
+		protocol->tn_write_field_end(protocol, transport);		
+	}
 	protocol->tn_write_field_stop(protocol, transport);
 	protocol->tn_write_struct_end(protocol, transport);
 }
@@ -127,6 +141,8 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 	tn_type_t type;
 	int16_t fieldId;
 	int32_t size;
+	int32_t i;
+	int32_t *v;
 	tn_package_name_structa_t *self = (tn_package_name_structa_t*) data;
 	tn_package_name_structa_init(self);
 
@@ -161,6 +177,33 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 				{
 				}
 				break;
+			case 3:
+				if( type == T_LIST )
+				{
+					protocol->tn_read_list_begin(protocol, transport, &type, &size);
+					if( type == T_I32 )
+					{
+						if( size > 0 )
+						{
+							if( self->listprop == NULL ) 
+								self->listprop = tn_list_create(sizeof(int32_t), size, T_I32);	
+							for( i = 0; i < size; i++ )
+							{
+								v = tn_list_append(self->listprop);
+								protocol->tn_read_int32(protocol, transport, v);
+							}
+						}
+					}
+					else
+					{
+					}
+				}
+				else
+				{
+				}
+				break;
+			default:
+				return -1;
 			//default:
 				//TODO: skip field
 		}
@@ -172,6 +215,15 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 tn_package_name_structa_t*
 tn_package_name_structa_init(tn_package_name_structa_t *ret)
 {
+	size_t count, i;
+	int32_t *elem;
+	if( ret->listprop != NULL )
+	{
+		// clear out the list and free the memory back to the heap
+		tn_list_clear(ret->listprop);
+	}
+	ret->mapprop_keytype = T_I16;
+	ret->mapprop_valtype = T_I16;
 	ret->parent.tn_write = tn_package_name_structa_write;
 	ret->parent.tn_read = tn_package_name_structa_read;
 	return ret;
@@ -183,6 +235,8 @@ tn_package_name_structa_create()
 	if( ret == NULL ) return NULL;
 	ret->strprop = NULL;
 	ret->structprop = NULL;
+	ret->listprop = NULL;
+	ret->mapprop = NULL;
 	return tn_package_name_structa_init(ret);
 }
 
@@ -191,6 +245,5 @@ tn_package_name_structa_create()
 void
 tn_package_name_init()
 {
-	// setup some things like write funcs and mowgli init
 }
 
