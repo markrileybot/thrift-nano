@@ -153,7 +153,7 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 		if( type == T_STOP )
 		{
 			break;
-		}
+		}		
 		switch(fieldId)
 		{
 			case 1:

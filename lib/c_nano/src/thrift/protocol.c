@@ -358,58 +358,81 @@ tn_protocol_binary_create()
 #define TNC_MAP				0x0B
 #define TNC_STRUCT			0x0C
 
-static int8_t tnc_type_map[13] =
+static int8_t tnc_type_map[16] =
 {
 	TNC_STOP,
+	0,
 	TNC_BOOLEAN_TRUE,
 	TNC_BYTE,
-	TNC_I16,
-	TNC_I32,
-	TNC_I64,
 	TNC_DOUBLE,
+	0,
+	TNC_I16,
+	0,
+	TNC_I32,
+	0,
+	TNC_I64,
 	TNC_BINARY,
-	TNC_LIST,
-	TNC_SET,
+	TNC_STRUCT,
 	TNC_MAP,
-	TNC_STRUCT
+	TNC_SET,
+	TNC_LIST
 };
 
-static tn_type_t tn_type_map[13] =
+tn_type_t
+tn_protocol_compact_map_type(int8_t type) 
 {
-	T_STOP,
-	T_BOOL,
-	T_BYTE,
-	T_I16,
-	T_I32,
-	T_I64,
-	T_DOUBLE,
-	T_STRING,
-	T_LIST,
-	T_SET,
-	T_MAP,
-	T_STRUCT
-};
+	switch (type) 
+	{
+		case TNC_STOP:
+			return T_STOP;
+		case TNC_BOOLEAN_FALSE:
+		case TNC_BOOLEAN_TRUE:
+			return T_BOOL;
+		case TNC_BYTE:
+			return T_BYTE;
+		case TNC_I16:
+			return T_I16;
+		case TNC_I32:
+			return T_I32;
+		case TNC_I64:
+			return T_I64;
+		case TNC_DOUBLE:
+			return T_DOUBLE;
+		case TNC_BINARY:
+			return T_STRING;
+		case TNC_LIST:
+			return T_LIST;
+		case TNC_SET:
+			return T_SET;
+		case TNC_MAP:
+			return T_MAP;
+		case TNC_STRUCT:
+			return T_STRUCT;
+		default:
+			return T_STOP;
+	}
+}
 
 
 /**
 * Convert n into a zigzag int. This allows negative numbers to be
 * represented compactly as a varint.
 */
-static int32_t 
+static uint32_t 
 tn_protocol_compact_int32_to_zigzag(int32_t n) {
 	return (n << 1) ^ (n >> 31);
 }
-static int64_t 
+static uint64_t 
 tn_protocol_compact_int64_to_zigzag(int64_t n) {
 	return (n << 1) ^ (n >> 63);
 }
 static int32_t 
-tn_protocol_compact_zigzag_to_int32(int32_t n) {
-	return (((uint32_t)n) >> 1) ^ -(n & 1);
+tn_protocol_compact_zigzag_to_int32(uint32_t n) {
+	return (n >> 1) ^ -(n & 1);
 }
 static int64_t 
-tn_protocol_compact_zigzag_to_int64(int64_t n) {
-	return (((uint32_t)n) >> 1) ^ -(n & 1);
+tn_protocol_compact_zigzag_to_int64(uint64_t n) {
+	return (n >> 1) ^ -(n & 1);
 }
 
 
@@ -558,12 +581,12 @@ tn_protocol_compact_write_list_begin(tn_protocol_t *self, tn_transport_t *transp
 {
 	if( size <= 14 )
 	{
-		if( self->tn_write_byte(self, transport, size << 4 | tnc_type_map[elemType]) <= 0 ) return -1;
+		if( self->tn_write_byte(self, transport, ((uint8_t)size << 4 | tnc_type_map[elemType])) <= 0 ) return -1;
 		return 1;
 	}
 	else
 	{
-		if( self->tn_write_byte(self, transport, tnc_type_map[elemType]) <= 0 ) return -1;
+		if( self->tn_write_byte(self, transport, 0xf0 | tnc_type_map[elemType]) <= 0 ) return -1;
 		if( self->tn_write_int32(self, transport, size) <= 0 ) return -1;		
 	}
 	return 5;
@@ -655,11 +678,11 @@ tn_protocol_compact_read_field_begin(tn_protocol_t *self, tn_transport_t *transp
 	else
 	{
 		// has a delta. add the delta to the last read field id.		
-		*fieldId = (int16_t)(lastFieldId + modifier);		
+		*fieldId = (int16_t)(lastFieldId + modifier);
 	}
 
 	// unmap the type
-	*fieldType = tn_type_map[(type & 0x0f)];
+	*fieldType = tn_protocol_compact_map_type(type & 0x0f);
 	
 	// is this a boolean?
 	boolNibble = type & 0x0f;
@@ -676,12 +699,12 @@ tn_protocol_compact_read_list_begin(tn_protocol_t *self, tn_transport_t *transpo
 {
 	int8_t sizeAndType;
 	if( self->tn_read_byte(self, transport, &sizeAndType) <= 0 ) return -1;
-	*size = (sizeAndType >> 4 & 0x0f);
+	*size = ((uint8_t)sizeAndType >> 4) & 0x0f;
 	if( *size == 15 )
 	{
 		if( self->tn_read_int32(self, transport, size) <= 0 ) return -1;
 	}
-	*elemType = tn_type_map[sizeAndType & 0x0f];
+	*elemType = tn_protocol_compact_map_type(sizeAndType & 0x0f);
 	return 5;
 }
 static size_t 
@@ -690,8 +713,8 @@ tn_protocol_compact_read_map_begin(tn_protocol_t *self, tn_transport_t *transpor
 	int8_t keyAndValueType;
 	if( self->tn_read_int32(self, transport, size) <= 0 ) return -1;
 	if( self->tn_read_byte(self, transport, &keyAndValueType) <= 0 ) return -1;
-	*keyType = tn_type_map[keyAndValueType >> 4 & 0x0f];
-	*valueType = tn_type_map[keyAndValueType & 0x0f];
+	*keyType = tn_protocol_compact_map_type(keyAndValueType >> 4 & 0x0f);
+	*valueType = tn_protocol_compact_map_type(keyAndValueType & 0x0f);
 	return 5;
 }
 static size_t 

@@ -123,7 +123,7 @@ int test_init()
 		printf("Failed to create structa\n");
 		return -1;
 	}
-	if((protocol = (tn_protocol_t*)tn_protocol_binary_create()) == NULL)
+	if((protocol = (tn_protocol_t*)tn_protocol_compact_create()) == NULL)
 	{	
 		printf("Failed to create protocol\n");
 		return -1;
