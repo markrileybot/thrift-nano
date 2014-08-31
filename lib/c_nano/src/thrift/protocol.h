@@ -29,6 +29,7 @@ typedef struct tn_protocol_t
 	size_t (*tn_write_int32)(struct tn_protocol_t *self, tn_transport_t *transport, int32_t v);
 	size_t (*tn_write_int64)(struct tn_protocol_t *self, tn_transport_t *transport, int64_t v);
 	size_t (*tn_write_byte)(struct tn_protocol_t *self, tn_transport_t *transport, int8_t v);
+	size_t (*tn_write_bool)(struct tn_protocol_t *self, tn_transport_t *transport, bool v);
 	size_t (*tn_write_double)(struct tn_protocol_t *self, tn_transport_t *transport, double v);
 
 
@@ -52,12 +53,13 @@ typedef struct tn_protocol_t
 	size_t (*tn_read_int32)(struct tn_protocol_t *self, tn_transport_t *transport, int32_t *v);
 	size_t (*tn_read_int64)(struct tn_protocol_t *self, tn_transport_t *transport, int64_t *v);
 	size_t (*tn_read_byte)(struct tn_protocol_t *self, tn_transport_t *transport, int8_t *v);
-	size_t (*tn_read_type)(struct tn_protocol_t *self, tn_transport_t *transport, tn_type_t *v);
+	size_t (*tn_read_bool)(struct tn_protocol_t *self, tn_transport_t *transport, bool *v);
 	size_t (*tn_read_double)(struct tn_protocol_t *self, tn_transport_t *transport, double *v);
 
 } tn_protocol_t;
 tn_protocol_t* tn_protocol_init(tn_protocol_t *protocol);
 tn_protocol_t* tn_protocol_create();
+
 
 
 // binary protocol
@@ -69,45 +71,20 @@ tn_protocol_binary_t* tn_protocol_binary_init(tn_protocol_binary_t *protocol);
 tn_protocol_binary_t* tn_protocol_binary_create();
 
 
-/**
 
-TODO implement me
-
-// compact binary protocol
-typedef struct
+// compact protocol
+typedef struct tn_protocol_compact_t
 {
 	tn_protocol_binary_t parent;
+	int16_t _booleanFieldId;
+	int16_t _lastFieldId;
+	int8_t  _nextBoolValue;
+	int8_t  _i32buf[5];
+	int8_t  _i64buf[10];
+	tn_list_t *_lastFieldIdStack;
 } tn_protocol_compact_t;
-size_t 
-tn_protocol_binary_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v)
-{
-	return transport->tn_write(transport, &v, 0, sizeof(int16_t));
-}
-size_t 
-tn_protocol_binary_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v)
-{
-	return transport->tn_write(transport, &v, 0, sizeof(int32_t));
-}
-size_t 
-tn_protocol_binary_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v)
-{
-	return transport->tn_write(transport, &v, 0, sizeof(int64_t));
-}
-void 
-tn_protocol_compact_init(tn_protocol_compact_t *protocol)
-{
-	tn_binary_protocol_init((tn_binary_protocol_t*)protocol);
-	protocol->tn_write_int16         = &tn_protocol_binary_write_int16;
-	protocol->tn_write_int32         = &tn_protocol_binary_write_int32;
-	protocol->tn_write_int64         = &tn_protocol_binary_write_int64;
-}
-tn_protocol_t*
-tn_protocol_compact_create()
-{
-	tn_protocol_compact_t *protocol = malloc(sizeof(tn_protocol_compact_t));
-	if( protocol != NULL ) tn_protocol_compact_init(protocol);
-	return (tn_protocol_t*) protocol;
-}
-*/
+tn_protocol_compact_t* tn_protocol_compact_init(tn_protocol_compact_t *protocol);
+tn_protocol_compact_t* tn_protocol_compact_create();
+
 
 #endif

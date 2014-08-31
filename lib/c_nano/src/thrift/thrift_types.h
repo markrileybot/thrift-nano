@@ -57,9 +57,11 @@ typedef struct
 } tn_list_t;
 void* tn_list_append(tn_list_t *list);
 void* tn_list_get(tn_list_t *list, size_t i);
+void* tn_list_pop(tn_list_t *list);
 void tn_list_remove(tn_list_t *list, size_t i);
 void tn_list_clear(tn_list_t *list);
 tn_list_t* tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn_type_t type);
 tn_list_t* tn_list_create(size_t elem_size, size_t elem_count, tn_type_t type);
+void tn_list_destroy(tn_list_t *list);
 
 #endif

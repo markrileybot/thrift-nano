@@ -50,22 +50,43 @@ tn_list_append(tn_list_t *list)
 	return list->data + ((list->elem_count - 1) * list->elem_size);
 }
 
-void* tn_list_get(tn_list_t *list, size_t i)
+void* 
+tn_list_get(tn_list_t *list, size_t i)
 {
 	if( i < 0 || i >= list->elem_count ) return NULL;
 	return list->data + (i * list->elem_size);
 }
-void tn_list_remove(tn_list_t *list, size_t i)
+void 
+tn_list_remove(tn_list_t *list, size_t i)
 {
 	if( i < 0 || i >= list->elem_count ) return;
-	size_t ipos = i * list->elem_size;
-	size_t bytes_after = list->elem_size * list->elem_count + list->elem_size - ipos;
-	memmove(list->data, list->data, ipos);
-	memmove(list->data + ipos, list->data + ipos + list->elem_size, bytes_after);
+	size_t ipos, bytes_after;
+	if( i < list->elem_count - 1 )
+	{
+		ipos = i * list->elem_size;
+		bytes_after = list->elem_size * list->elem_count + list->elem_size - ipos;
+		memmove(list->data, list->data, ipos);
+		memmove(list->data + ipos, list->data + ipos + list->elem_size, bytes_after);
+	}
 	list->elem_count--;
 }
-void tn_list_clear(tn_list_t *list)
+void 
+tn_list_clear(tn_list_t *list)
 {
 	memset(list->data, 0, list->elem_cap * list->elem_size);
 	list->elem_count = 0;
+}
+
+void* 
+tn_list_pop(tn_list_t *list)
+{
+	tn_list_remove(list, list->elem_count - 1);
+	return list->data + (list->elem_count * list->elem_size);
+}
+
+void 
+tn_list_destroy(tn_list_t *list)
+{
+	mowgli_free(list->data);
+	mowgli_free(list);
 }
