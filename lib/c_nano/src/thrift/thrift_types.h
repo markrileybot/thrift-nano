@@ -64,4 +64,22 @@ tn_list_t* tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn
 tn_list_t* tn_list_create(size_t elem_size, size_t elem_count, tn_type_t type);
 void tn_list_destroy(tn_list_t *list);
 
+
+/**
+ * A managed buffer
+ */
+typedef struct
+{
+	void *buf;
+	size_t pos;
+	size_t len;
+} tn_buffer_t;
+void* tn_buffer_get(tn_buffer_t *mem, size_t len);
+size_t tn_buffer_read(tn_buffer_t *mem, void *buf, size_t len);
+size_t tn_buffer_write(tn_buffer_t *mem, void *buf, size_t len);
+void tn_buffer_reset(tn_buffer_t *self);
+tn_buffer_t* tn_buffer_init(tn_buffer_t *self, size_t bufferSize);
+tn_buffer_t* tn_buffer_create(size_t bufferSize);
+void tn_buffer_destroy(tn_buffer_t *self);
+
 #endif

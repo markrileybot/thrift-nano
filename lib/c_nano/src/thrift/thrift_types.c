@@ -77,7 +77,7 @@ tn_list_clear(tn_list_t *list)
 	list->elem_count = 0;
 }
 
-void* 
+void * 
 tn_list_pop(tn_list_t *list)
 {
 	tn_list_remove(list, list->elem_count - 1);
@@ -90,3 +90,63 @@ tn_list_destroy(tn_list_t *list)
 	mowgli_free(list->data);
 	mowgli_free(list);
 }
+
+
+
+
+void *
+tn_buffer_get(tn_buffer_t *mem, size_t len)
+{
+	len = MIN(len, mem->len - mem->pos);
+	void *chunk = mem->buf + mem->pos;
+	mem->pos += len;
+    return chunk;
+}
+size_t
+tn_buffer_read(tn_buffer_t *mem, void *buf, size_t len)
+{
+	len = MIN(len, mem->len - mem->pos);
+	memcpy(buf, mem->buf+mem->pos, len);
+	mem->pos += len;
+    return len;
+}
+size_t
+tn_buffer_write(tn_buffer_t *mem, void *buf, size_t len)
+{
+	len = MIN(len, mem->len - mem->pos);
+	memcpy(mem->buf+mem->pos, buf, len);
+	mem->pos += len;
+    return len;
+}
+void
+tn_buffer_reset(tn_buffer_t *self)
+{
+	self->pos = 0;
+}
+tn_buffer_t *
+tn_buffer_init(tn_buffer_t *self, size_t bufferSize)
+{
+	if( self->buf == NULL )
+	{
+		self->buf = mowgli_alloc(bufferSize);
+	}	
+	self->pos = 0;
+	self->len = bufferSize;
+	return self;
+}
+tn_buffer_t*
+tn_buffer_create(size_t bufferSize)
+{
+	tn_buffer_t *t = mowgli_alloc(sizeof(tn_buffer_t));
+	if( t == NULL ) return NULL;
+	t->buf = NULL;
+	return tn_buffer_init(t, bufferSize);
+}
+void
+tn_buffer_destroy(tn_buffer_t *self)
+{
+	mowgli_free(self->buf);
+	mowgli_free(self);
+}
+
+

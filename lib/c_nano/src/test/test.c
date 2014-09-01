@@ -14,6 +14,7 @@ tn_package_name_structa_t *structa;
 tn_package_name_structa_t *structa2;
 tn_transport_t *transport;
 tn_protocol_t *protocol;
+tn_protocol_t *protocol2;
 
 int
 test_list()
@@ -128,6 +129,11 @@ int test_init()
 		printf("Failed to create protocol\n");
 		return -1;
 	}
+	if((protocol2 = (tn_protocol_t*)tn_protocol_binary_create()) == NULL)
+	{	
+		printf("Failed to create protocol2\n");
+		return -1;
+	}	
 	if((transport = tn_transport_memory_create(10240)) == NULL)
 	{	
 		printf("Failed to create transport\n");
@@ -139,6 +145,7 @@ int test_init()
 int test_write_abunch()
 {
 	tn_transport_memory_t *t = (tn_transport_memory_t*) transport;
+	t->tn_reset(t);
 
 	size_t bytes, pos, i;
 	struct timeval start, end;
@@ -147,7 +154,7 @@ int test_write_abunch()
 	for( ; i < CALLS; i++ )
 	{
 		bytes = tn_write_struct(structa, protocol, transport);
-		pos = t->pos;
+		pos = t->buf->pos;
 		t->tn_reset(t);
 	}
 	gettimeofday(&end, NULL);
@@ -160,6 +167,7 @@ int test_write_abunch()
 int test_read_abunch()
 {
 	tn_transport_memory_t *t = (tn_transport_memory_t*) transport;
+	t->tn_reset(t);
 	structa2 = tn_package_name_structa_create();
 
 	size_t bytes, pos, i;
@@ -169,7 +177,7 @@ int test_read_abunch()
 	for( ; i < CALLS; i++ )
 	{
 		bytes = tn_read_struct(structa2, protocol, transport);
-		pos = t->pos;
+		pos = t->buf->pos;
 		t->tn_reset(t);
 	}
 	gettimeofday(&end, NULL);
@@ -196,5 +204,13 @@ int main(int argc, char** argv)
 	run_test(test_list);
 	run_test(test_write_abunch);
 	run_test(test_read_abunch);
+
+	tn_protocol_t *tmp;	
+	tmp = protocol;
+	protocol = protocol2;
+	protocol2 = tmp;
+	
+	run_test(test_write_abunch);
+	run_test(test_read_abunch);	
 	return 0;
 }

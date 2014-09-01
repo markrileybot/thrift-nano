@@ -3,6 +3,7 @@
 #define __TRANSPORT_H__
 
 #include <mowgli/mowgli.h>
+#include <thrift_types.h>
 
 typedef struct tn_transport_t
 {
@@ -16,12 +17,10 @@ tn_transport_t* tn_transport_create();
 typedef struct tn_transport_memory_t
 {
 	tn_transport_t parent;
-	void *buf;
-	size_t pos;
-	size_t len;
+	tn_buffer_t* buf;
 	void (*tn_reset)(struct tn_transport_memory_t* self);
 } tn_transport_memory_t;
-tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self);
+tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self, size_t bufferSize);
 tn_transport_t* tn_transport_memory_create(size_t bufferSize);
 
 #endif

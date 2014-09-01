@@ -46,52 +46,39 @@ static size_t
 tn_transport_memory_read(tn_transport_t *self, void *buf, size_t len)
 {
 	tn_transport_memory_t *mem = (tn_transport_memory_t*) self;
-	len = MIN(len, mem->len - mem->pos);
-	memcpy(buf, mem->buf+mem->pos, len);
-	mem->pos += len;
-    return len;
+	return tn_buffer_read(mem->buf, buf, len);
 }
-
 static size_t
 tn_transport_memory_write(tn_transport_t *self, void *buf, size_t len)
 {
 	tn_transport_memory_t *mem = (tn_transport_memory_t*) self;
-	len = MIN(len, mem->len - mem->pos);
-	memcpy(mem->buf+mem->pos, buf, len);
-	mem->pos += len;
-    return len;
+	return tn_buffer_write(mem->buf, buf, len);
 }
-
 static void
 tn_transport_memory_reset(tn_transport_memory_t *self)
 {
-	tn_transport_memory_t *mem = (tn_transport_memory_t*) self;
-	mem->pos = 0;
+	tn_buffer_reset(self->buf);
 }
 tn_transport_t *
-tn_transport_memory_init(tn_transport_memory_t *s)
+tn_transport_memory_init(tn_transport_memory_t *s, size_t bufferSize)
 {
 	tn_transport_t *self = (tn_transport_t*) s;
 	self->tn_is_open = &tn_transport_memory_is_open;
 	self->tn_read = &tn_transport_memory_read;
 	self->tn_write = &tn_transport_memory_write;
 	s->tn_reset = &tn_transport_memory_reset;
+	if( s->buf == NULL )
+	{
+		s->buf = tn_buffer_create(bufferSize);
+	}
 	return self;
 }
-
 tn_transport_t*
 tn_transport_memory_create(size_t bufferSize)
 {
 	tn_transport_memory_t *t = mowgli_alloc(sizeof(tn_transport_memory_t));
 	if( t == NULL ) return NULL;
-	t->buf = mowgli_alloc(bufferSize);
-	if( t->buf == NULL )
-	{
-		mowgli_free(t);
-		return NULL;
-	}
-	tn_transport_memory_init(t);
-	t->len = bufferSize;
+	tn_transport_memory_init(t, bufferSize);
 	return (tn_transport_t*) t;
 }
 
