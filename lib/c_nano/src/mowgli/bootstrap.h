@@ -25,5 +25,6 @@
 #define __MOWGLI_BOOTSTRAP_H__
 
 extern void mowgli_bootstrap(void);
+extern void mowgli_shutdown(void);
 
 #endif

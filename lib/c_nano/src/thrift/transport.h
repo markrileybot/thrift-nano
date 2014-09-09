@@ -13,6 +13,7 @@ typedef struct tn_transport_t
 } tn_transport_t;
 tn_transport_t* tn_transport_init(tn_transport_t *self);
 tn_transport_t* tn_transport_create();
+void tn_transport_destroy(tn_transport_t*);
 
 typedef struct tn_transport_memory_t
 {
@@ -22,5 +23,6 @@ typedef struct tn_transport_memory_t
 } tn_transport_memory_t;
 tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self, size_t bufferSize);
 tn_transport_t* tn_transport_memory_create(size_t bufferSize);
+void tn_transport_memory_destroy(tn_transport_memory_t*);
 
 #endif

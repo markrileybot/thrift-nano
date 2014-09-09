@@ -1,7 +1,15 @@
 
 
 // Here's what I think the generated code should look like:
+
 #include <example_gen.h>
+#include <mowgli/alloc.h>
+#include <mowgli/mowgli_string.h>
+#include <protocol.h>
+#include <stddef.h>
+#include <struct.h>
+#include <thrift_types.h>
+#include <transport.h>
 
 // struct b
 static size_t
@@ -97,6 +105,12 @@ tn_package_name_structb_create()
 	ret->strprop = NULL;
 	return tn_package_name_structb_init(ret);
 }
+void
+tn_package_name_structb_destroy(tn_package_name_structb_t* self)
+{
+	mowgli_string_destroy(self->strprop);
+	mowgli_free(self);
+}
 
 
 
@@ -106,6 +120,7 @@ tn_package_name_structa_write(void *data, tn_protocol_t *protocol, tn_transport_
 {
 	size_t listprop_count, i;
 	int32_t *v;
+	tn_map_elem_t *e;
 	tn_package_name_structa_t *s = (tn_package_name_structa_t*) data;	
 	protocol->tn_write_struct_begin(protocol, transport, data);
 	if( s->strprop != NULL && s->strprop->pos > 0 )
@@ -132,13 +147,26 @@ tn_package_name_structa_write(void *data, tn_protocol_t *protocol, tn_transport_
 		}
 		protocol->tn_write_field_end(protocol, transport);		
 	}
+	if( s->mapprop != NULL )
+	{
+		listprop_count = s->mapprop->keys->elem_count;
+		protocol->tn_write_field_begin(protocol, transport, T_MAP, 4);
+		protocol->tn_write_map_begin(protocol, transport, s->mapprop->keys->type, s->mapprop->values->type, listprop_count);
+		for( i = 0; i < listprop_count; i++ )
+		{
+			e = tn_map_get(s->mapprop, i);
+			protocol->tn_write_int16(protocol, transport, *(int16_t*)e->key);
+			protocol->tn_write_int16(protocol, transport, *(int16_t*)e->value);
+		}
+		protocol->tn_write_field_end(protocol, transport);
+	}
 	protocol->tn_write_field_stop(protocol, transport);
 	protocol->tn_write_struct_end(protocol, transport);
 }
 static size_t
 tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t *transport)
 {
-	tn_type_t type;
+	tn_type_t type, vtype;
 	int16_t fieldId;
 	int32_t size;
 	int32_t i;
@@ -202,6 +230,27 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 				{
 				}
 				break;
+			case 4:
+				if( type == T_MAP )
+				{
+					protocol->tn_read_map_begin(protocol, transport, &type, &vtype, &size);
+					if( type == T_I16 && vtype == T_I16 )
+					{
+						if( size > 0 )
+						{
+							int16_t k, v;
+							if( self->mapprop == NULL )
+								self->mapprop = tn_map_create(sizeof(int16_t), sizeof(int16_t), T_I16, T_I16, size);
+							for( i = 0; i < size; i++ )
+							{
+								protocol->tn_read_int16(protocol, transport, &k);
+								protocol->tn_read_int16(protocol, transport, &v);
+								tn_map_put(self->mapprop, &k, &v);
+							}
+						}
+					}
+				}
+				break;
 			default:
 				return -1;
 			//default:
@@ -219,11 +268,14 @@ tn_package_name_structa_init(tn_package_name_structa_t *ret)
 	int32_t *elem;
 	if( ret->listprop != NULL )
 	{
-		// clear out the list and free the memory back to the heap
+		// clear out the list
 		tn_list_clear(ret->listprop);
 	}
-	ret->mapprop_keytype = T_I16;
-	ret->mapprop_valtype = T_I16;
+	if( ret->mapprop != NULL )
+	{
+		// clear out the map
+		tn_map_clear(ret->mapprop);
+	}
 	ret->parent.tn_write = tn_package_name_structa_write;
 	ret->parent.tn_read = tn_package_name_structa_read;
 	return ret;
@@ -231,7 +283,7 @@ tn_package_name_structa_init(tn_package_name_structa_t *ret)
 tn_package_name_structa_t*
 tn_package_name_structa_create()
 {
-	tn_package_name_structa_t *ret = (tn_package_name_structa_t*) mowgli_alloc(sizeof(tn_package_name_structa_t));
+	tn_package_name_structa_t *ret = mowgli_alloc(sizeof(tn_package_name_structa_t));
 	if( ret == NULL ) return NULL;
 	ret->strprop = NULL;
 	ret->structprop = NULL;
@@ -239,11 +291,27 @@ tn_package_name_structa_create()
 	ret->mapprop = NULL;
 	return tn_package_name_structa_init(ret);
 }
+void
+tn_package_name_structa_destroy(tn_package_name_structa_t* self)
+{
+	mowgli_string_destroy(self->strprop);
+	tn_list_destroy(self->listprop);
+	tn_map_destroy(self->mapprop);
+	tn_package_name_structb_destroy(self->structprop);
+	mowgli_free(self);
+}
 
 
 // package/library level init
 void
 tn_package_name_init()
 {
+	//mowgli_bootstrap();
+}
+
+void
+tn_package_name_fini()
+{
+	mowgli_shutdown();
 }
 

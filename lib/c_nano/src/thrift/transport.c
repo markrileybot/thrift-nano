@@ -35,6 +35,11 @@ tn_transport_create()
 	if( t != NULL ) tn_transport_init(t);
 	return t;
 }
+void
+tn_transport_destroy(tn_transport_t* t)
+{
+	mowgli_free(t);
+}
 
 
 static bool
@@ -81,7 +86,12 @@ tn_transport_memory_create(size_t bufferSize)
 	tn_transport_memory_init(t, bufferSize);
 	return (tn_transport_t*) t;
 }
-
+void
+tn_transport_memory_destroy(tn_transport_memory_t* t)
+{
+	tn_buffer_destroy(t->buf);
+	mowgli_free(t);
+}
 
 
 

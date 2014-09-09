@@ -125,9 +125,14 @@ tn_protocol_init(tn_protocol_t *protocol)
 tn_protocol_t*
 tn_protocol_create()
 {
-	tn_protocol_t *protocol = malloc(sizeof(tn_protocol_t));
+	tn_protocol_t *protocol = mowgli_alloc(sizeof(tn_protocol_t));
 	if( protocol != NULL ) tn_protocol_init(protocol);
 	return protocol;
+}
+void
+tn_protocol_destroy(tn_protocol_t* t)
+{
+	mowgli_free(t);
 }
 
 
@@ -325,11 +330,15 @@ tn_protocol_binary_init(tn_protocol_binary_t *binproto)
 tn_protocol_binary_t*
 tn_protocol_binary_create()
 {
-	tn_protocol_binary_t *protocol = malloc(sizeof(tn_protocol_binary_t));
+	tn_protocol_binary_t *protocol = mowgli_alloc(sizeof(tn_protocol_binary_t));
 	if( protocol != NULL ) tn_protocol_binary_init(protocol);
 	return protocol;
 }
-
+void
+tn_protocol_binary_destroy(tn_protocol_binary_t* t)
+{
+	mowgli_free(t);
+}
 
 
 
@@ -806,12 +815,19 @@ tn_protocol_compact_init(tn_protocol_compact_t *cproto)
 tn_protocol_compact_t*
 tn_protocol_compact_create()
 {
-	tn_protocol_compact_t *protocol = malloc(sizeof(tn_protocol_compact_t));
+	tn_protocol_compact_t *protocol = mowgli_alloc(sizeof(tn_protocol_compact_t));
 	if( protocol == NULL ) return NULL; 
 	protocol->_lastFieldIdStack = NULL;
+	protocol->_lastFieldId = -1;
+	protocol->_nextBoolValue = -1;
 	tn_protocol_compact_init(protocol);
 	return protocol;
 }
-
+void
+tn_protocol_compact_destroy(tn_protocol_compact_t* t)
+{
+	tn_list_destroy(t->_lastFieldIdStack);
+	mowgli_free(t);
+}
 
 

@@ -39,6 +39,13 @@ mowgli_node_bootstrap(void)
 	}
 }
 
+void
+mowgli_node_shutdown()
+{
+	mowgli_heap_destroy(mowgli_node_heap);
+	mowgli_heap_destroy(mowgli_list_heap);
+}
+
 /* creates a new node */
 mowgli_node_t *
 mowgli_node_create(void)

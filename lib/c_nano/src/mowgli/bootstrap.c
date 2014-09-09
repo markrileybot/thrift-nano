@@ -26,11 +26,11 @@
 extern void mowgli_node_bootstrap(void);
 extern void mowgli_allocator_bootstrap(void);
 
+static bool bootstrapped = 0;
+
 /* TODO: rename to mowgli_bootstrap next time there is a LIB_MAJOR bump */
 MOWGLI_BOOTSTRAP_FUNC(mowgli_bootstrap_real)
 {
-	static bool bootstrapped = 0;
-
 	if (bootstrapped)
 		return;
 
@@ -43,5 +43,17 @@ MOWGLI_BOOTSTRAP_FUNC(mowgli_bootstrap_real)
 	mowgli_allocator_set_policy(mowgli_allocator_malloc);
 
 	bootstrapped = true;
+}
+
+void
+mowgli_shutdown()
+{
+	if(!bootstrapped)
+		return;
+
+	mowgli_allocator_shutdown();
+	mowgli_node_shutdown();
+
+	bootstrapped = false;
 }
 

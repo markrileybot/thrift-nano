@@ -19,7 +19,7 @@ typedef struct
 } tn_package_name_structb_t;
 tn_package_name_structb_t* tn_package_name_structb_init(tn_package_name_structb_t *ret);
 tn_package_name_structb_t* tn_package_name_structb_create();
-
+void tn_package_name_structb_destroy(tn_package_name_structb_t*);
 
 // struct a
 typedef struct
@@ -28,14 +28,14 @@ typedef struct
 	mowgli_string_t *strprop;
 	tn_package_name_structb_t *structprop;
 	tn_list_t *listprop;
-	mowgli_dictionary_t *mapprop;
-	tn_type_t mapprop_keytype;
-	tn_type_t mapprop_valtype;
+	tn_map_t *mapprop;
 } tn_package_name_structa_t;
 tn_package_name_structa_t* tn_package_name_structa_init(tn_package_name_structa_t *ret);
 tn_package_name_structa_t* tn_package_name_structa_create();
+void tn_package_name_structa_destroy(tn_package_name_structa_t*);
 
 // package/library level init
 void tn_package_name_init();
+void tn_package_name_fini();
 
 #endif

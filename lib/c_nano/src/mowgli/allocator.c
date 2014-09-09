@@ -43,3 +43,9 @@ mowgli_allocator_bootstrap(void)
 {
 	mowgli_allocator_malloc = mowgli_allocation_policy_create(mowgli_allocator_func_malloc, mowgli_allocator_func_free);
 }
+
+void
+mowgli_allocator_shutdown()
+{
+	mowgli_free(mowgli_allocator_malloc);
+}
