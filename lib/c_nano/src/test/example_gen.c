@@ -21,6 +21,7 @@ tn_package_name_structb_write(void *data, tn_protocol_t *protocol, tn_transport_
 	if( s->strprop != NULL && s->strprop->pos > 0 )
 	{
 		protocol->tn_write_field_begin(protocol, transport, T_STRING, 1);
+		protocol->tn_write_string_begin(protocol, transport, s->strprop->pos);
 		protocol->tn_write_string(protocol, transport, s->strprop);
 		protocol->tn_write_field_end(protocol, transport);
 	}
@@ -40,6 +41,14 @@ tn_package_name_structb_write(void *data, tn_protocol_t *protocol, tn_transport_
 	protocol->tn_write_field_begin(protocol, transport, T_I32, 5);
 	protocol->tn_write_int32(protocol, transport, s->v4);
 	protocol->tn_write_field_end(protocol, transport);
+
+	if( s->v5 != NULL && s->v5->pos > 0 )
+	{
+		protocol->tn_write_field_begin(protocol, transport, T_STRING, 6);
+		protocol->tn_write_bytes_begin(protocol, transport, s->v5->pos);
+		protocol->tn_write_bytes(protocol, transport, s->v5);
+		protocol->tn_write_field_end(protocol, transport);
+	}
 
 	protocol->tn_write_field_stop(protocol, transport);
 	protocol->tn_write_struct_end(protocol, transport);
@@ -66,12 +75,17 @@ tn_package_name_structb_read(void *data, tn_protocol_t *protocol, tn_transport_t
 			case 1:
 				if( type == T_STRING )
 				{
-					if( self->strprop == NULL ) self->strprop = mowgli_string_create();
-					if( protocol->tn_read_string(protocol, transport, self->strprop) < 0 ) return -1;
+					protocol->tn_read_string_begin(protocol, transport, &size);
+					if( size > 0 )
+					{
+						if( self->strprop == NULL ) self->strprop = tn_buffer_create(size);
+						tn_buffer_reset(self->strprop);
+						if( protocol->tn_read_string(protocol, transport, self->strprop, size) < 0 ) return -1;
+					}
 				}
 				break;
 			case 2:
-				if( protocol->tn_read_byte(protocol, transport, &(self->v1)) < 0) return -1;
+				if( protocol->tn_read_byte(protocol, transport, &self->v1) < 0) return -1;
 				break;
 			case 3:
 				if( protocol->tn_read_byte(protocol, transport, &self->v2) < 0) return -1;
@@ -81,6 +95,18 @@ tn_package_name_structb_read(void *data, tn_protocol_t *protocol, tn_transport_t
 				break;
 			case 5:
 				if( protocol->tn_read_int32(protocol, transport, &self->v4) < 0) return -1;
+				break;
+			case 6:
+				if( type == T_STRING )
+				{
+					protocol->tn_read_bytes_begin(protocol, transport, &size);
+					if( size > 0 )
+					{
+						if( self->v5 == NULL ) self->v5 = tn_buffer_create(size);
+						tn_buffer_reset(self->v5);
+						if( protocol->tn_read_bytes(protocol, transport, self->v5, size) < 0 ) return -1;
+					}
+				}
 				break;
 			//default:
 				//TODO: skip field
@@ -100,7 +126,7 @@ tn_package_name_structb_init(tn_package_name_structb_t *ret)
 tn_package_name_structb_t*
 tn_package_name_structb_create()
 {
-	tn_package_name_structb_t *ret = (tn_package_name_structb_t*) mowgli_alloc(sizeof(tn_package_name_structb_t));
+	tn_package_name_structb_t *ret = mowgli_alloc(sizeof(tn_package_name_structb_t));
 	if( ret == NULL ) return NULL;
 	ret->strprop = NULL;
 	return tn_package_name_structb_init(ret);
@@ -108,7 +134,8 @@ tn_package_name_structb_create()
 void
 tn_package_name_structb_destroy(tn_package_name_structb_t* self)
 {
-	mowgli_string_destroy(self->strprop);
+	tn_buffer_destroy(self->strprop);
+	tn_buffer_destroy(self->v5);
 	mowgli_free(self);
 }
 
@@ -126,6 +153,7 @@ tn_package_name_structa_write(void *data, tn_protocol_t *protocol, tn_transport_
 	if( s->strprop != NULL && s->strprop->pos > 0 )
 	{
 		protocol->tn_write_field_begin(protocol, transport, T_STRING, 1);
+		protocol->tn_write_string_begin(protocol, transport, s->strprop->pos);
 		protocol->tn_write_string(protocol, transport, s->strprop);
 		protocol->tn_write_field_end(protocol, transport);
 	}
@@ -187,8 +215,13 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 			case 1:
 				if( type == T_STRING )
 				{
-					if( self->strprop == NULL ) self->strprop = mowgli_string_create();
-					if( protocol->tn_read_string(protocol, transport, self->strprop) < 0 ) return -1;
+					protocol->tn_read_string_begin(protocol, transport, &size);
+					if( size > 0 )
+					{
+						if( self->strprop == NULL ) self->strprop = tn_buffer_create(size);
+						tn_buffer_reset(self->strprop);
+						if( protocol->tn_read_string(protocol, transport, self->strprop, size) < 0 ) return -1;
+					}
 				}
 				else
 				{
@@ -294,7 +327,7 @@ tn_package_name_structa_create()
 void
 tn_package_name_structa_destroy(tn_package_name_structa_t* self)
 {
-	mowgli_string_destroy(self->strprop);
+	tn_buffer_destroy(self->strprop);
 	tn_list_destroy(self->listprop);
 	tn_map_destroy(self->mapprop);
 	tn_package_name_structb_destroy(self->structprop);

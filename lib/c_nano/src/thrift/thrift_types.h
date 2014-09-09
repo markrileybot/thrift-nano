@@ -94,15 +94,11 @@ typedef struct
 
 	// settings
 	mowgli_boolean_t growable;
-
-	// interesting things
-	size_t same_key_count;
 } tn_map_t;
 tn_map_elem_t *tn_map_put(tn_map_t *map, void *key, void *value);
 tn_map_elem_t *tn_map_find(tn_map_t *map, void *key);
 tn_map_elem_t *tn_map_get(tn_map_t *map, size_t index);
 void tn_map_remove(tn_map_t *map, void *key);
-void tn_map_dump(tn_map_t *map);
 void tn_map_clear(tn_map_t *map);
 tn_map_t* tn_map_init(tn_map_t *list, size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count);
 tn_map_t* tn_map_create(size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count);
@@ -116,10 +112,14 @@ typedef struct
 	void *buf;
 	size_t pos;
 	size_t len;
+
+	// settings
+	mowgli_boolean_t growable;
 } tn_buffer_t;
 void* tn_buffer_get(tn_buffer_t *mem, size_t len);
 size_t tn_buffer_read(tn_buffer_t *mem, void *buf, size_t len);
 size_t tn_buffer_write(tn_buffer_t *mem, void *buf, size_t len);
+size_t tn_buffer_ensure_cap(tn_buffer_t *mem, size_t len);
 void tn_buffer_reset(tn_buffer_t *self);
 tn_buffer_t* tn_buffer_init(tn_buffer_t *self, size_t bufferSize);
 tn_buffer_t* tn_buffer_create(size_t bufferSize);

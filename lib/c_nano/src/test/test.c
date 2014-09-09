@@ -4,10 +4,10 @@
 #include <stdio.h>
 #include <time.h>
 
-#define CALLS 1000000
-//#define CALLS 100
-#define STRING1 "Heres some string data"
-#define STRING2 ".  Here is some more data"
+//#define CALLS 1000000
+#define CALLS 100
+#define STRING1 "Heres some string data."
+#define STRING2 "  Here is some more data."
 
 #define run_test(func) printf("\nRun " #func "\n"); if( func() < 0 ) return -1;
 
@@ -37,7 +37,6 @@ test_map()
 	}
 	printf("Map capacity is %d\n", map->entry_cap);
 	printf("Map size is %d\n", map->keys->elem_count);
-	printf("Map sparseness is %d/%d\n", map->same_key_count, map->keys->elem_count);
 
 	for( i = 0, v = 0; i < max; i++, v++ )
 	{
@@ -45,7 +44,6 @@ test_map()
 	}
 	printf("Map capacity is %d\n", map->entry_cap);
 	printf("Map size is %d\n", map->keys->elem_count);
-	printf("Map sparseness is %d/%d\n", map->same_key_count, map->keys->elem_count);
 
 	struct timeval start, end;
 
@@ -59,7 +57,6 @@ test_map()
 	double pc = total/CALLS;
 	printf("Map capacity is %d\n", map->entry_cap);
 	printf("Map size is %d\n", map->keys->elem_count);
-	printf("Map sparseness is %d/%d\n", map->same_key_count, map->keys->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 
@@ -73,7 +70,6 @@ test_map()
 	pc = total/CALLS;
 	printf("Map capacity is %d\n", map->entry_cap);
 	printf("Map size is %d\n", map->keys->elem_count);
-	printf("Map sparseness is %d/%d\n", map->same_key_count, map->keys->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 	tn_map_elem_t *e;
@@ -90,7 +86,6 @@ test_map()
 	pc = total/CALLS;
 	printf("Map capacity is %d\n", map->entry_cap);
 	printf("Map size is %d\n", map->keys->elem_count);
-	printf("Map sparseness is %d/%d\n", map->same_key_count, map->keys->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 
@@ -104,7 +99,6 @@ test_map()
 	pc = total/CALLS;
 	printf("Map capacity is %d\n", map->entry_cap);
 	printf("Map size is %d\n", map->keys->elem_count);
-	printf("Map sparseness is %d/%d\n", map->same_key_count, map->keys->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 	tn_map_destroy(map);
@@ -188,7 +182,17 @@ create_structa()
 		printf("Failed to create structb\n");
 		return NULL;
 	}
-	if((s->strprop = mowgli_string_create()) == NULL )
+	if((s->structprop->strprop = tn_buffer_create(64)) == NULL)
+	{
+		printf("Failed to create structb->str\n");
+		return NULL;
+	}
+	if((s->structprop->v5 = tn_buffer_create(32)) == NULL)
+	{
+		printf("Failed to create structb->v5\n");
+		return NULL;
+	}
+	if((s->strprop = tn_buffer_create(32)) == NULL )
 	{
 		printf("Failed to create string\n");
 		return NULL;
@@ -203,8 +207,13 @@ create_structa()
 		printf("Failed to create map\n");
 		return NULL;
 	}
-	mowgli_string_append(s->strprop, STRING1, sizeof(STRING1)-1);
-	mowgli_string_append(s->strprop, STRING2, sizeof(STRING2)-1);
+
+	char nul = '\0';
+	tn_buffer_write(s->strprop, STRING1, sizeof(STRING1) - 1);
+	tn_buffer_write(s->strprop, STRING2, sizeof(STRING2) - 1);
+	tn_buffer_write(s->strprop, &nul, 1);
+	tn_buffer_write(s->structprop->strprop, STRING1, sizeof(STRING1));
+	tn_buffer_write(s->structprop->v5, STRING1, sizeof(STRING1));
 
 	int32_t *v;
 	size_t i;
@@ -302,7 +311,7 @@ int test_read_abunch()
 	double pc = total/CALLS;
 	printf("%f/%d usecs/calls (%f usec/call) bytes=%d\n", total, CALLS, pc, pos);
 
-	printf("Test %s\n", structa2->strprop->str);
+	printf("Test %s\n", structa2->strprop->buf);
 	printf("Test2 elem_count=%d\t[", structa2->listprop->elem_count);
 	int32_t *v;
 	size_t size = structa2->listprop->elem_count;

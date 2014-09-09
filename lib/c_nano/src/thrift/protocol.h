@@ -21,10 +21,14 @@ typedef struct tn_protocol_t
 	size_t (*tn_write_list_end)(struct tn_protocol_t *self, tn_transport_t *transport);
 	size_t (*tn_write_map_begin)(struct tn_protocol_t *self, tn_transport_t *transport, tn_type_t keyType, tn_type_t valueType, int32_t size);
 	size_t (*tn_write_map_end)(struct tn_protocol_t *self, tn_transport_t *transport);
-	size_t (*tn_write_bytes)(struct tn_protocol_t *self, tn_transport_t *transport, void *s, int32_t len);
+	size_t (*tn_write_bytes_begin)(struct tn_protocol_t *self, tn_transport_t *transport, int32_t size);
+	size_t (*tn_write_bytes_end)(struct tn_protocol_t *self, tn_transport_t *transport);
+	size_t (*tn_write_bytes)(struct tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v);
+	size_t (*tn_write_string_begin)(struct tn_protocol_t *self, tn_transport_t *transport, int32_t size);
+	size_t (*tn_write_string_end)(struct tn_protocol_t *self, tn_transport_t *transport);
+	size_t (*tn_write_string)(struct tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v);
 
 	// scalars
-	size_t (*tn_write_string)(struct tn_protocol_t *self, tn_transport_t *transport, mowgli_string_t *v);
 	size_t (*tn_write_int16)(struct tn_protocol_t *self, tn_transport_t *transport, int16_t v);
 	size_t (*tn_write_int32)(struct tn_protocol_t *self, tn_transport_t *transport, int32_t v);
 	size_t (*tn_write_int64)(struct tn_protocol_t *self, tn_transport_t *transport, int64_t v);
@@ -45,10 +49,14 @@ typedef struct tn_protocol_t
 	size_t (*tn_read_list_end)(struct tn_protocol_t *self, tn_transport_t *transport);
 	size_t (*tn_read_map_begin)(struct tn_protocol_t *self, tn_transport_t *transport, tn_type_t *keyType, tn_type_t *valueType, int32_t *size);
 	size_t (*tn_read_map_end)(struct tn_protocol_t *self, tn_transport_t *transport);
-	size_t (*tn_read_bytes)(struct tn_protocol_t *self, tn_transport_t *transport, void *s, int32_t *len);
+	size_t (*tn_read_bytes_begin)(struct tn_protocol_t *self, tn_transport_t *transport, int32_t *size);
+	size_t (*tn_read_bytes_end)(struct tn_protocol_t *self, tn_transport_t *transport);
+	size_t (*tn_read_bytes)(struct tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t size);
+	size_t (*tn_read_string_begin)(struct tn_protocol_t *self, tn_transport_t *transport, int32_t *size);
+	size_t (*tn_read_string_end)(struct tn_protocol_t *self, tn_transport_t *transport);
+	size_t (*tn_read_string)(struct tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t size);
 
 	// scalars
-	size_t (*tn_read_string)(struct tn_protocol_t *self, tn_transport_t *transport, mowgli_string_t *v);
 	size_t (*tn_read_int16)(struct tn_protocol_t *self, tn_transport_t *transport, int16_t *v);
 	size_t (*tn_read_int32)(struct tn_protocol_t *self, tn_transport_t *transport, int32_t *v);
 	size_t (*tn_read_int64)(struct tn_protocol_t *self, tn_transport_t *transport, int64_t *v);

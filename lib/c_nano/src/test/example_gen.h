@@ -11,11 +11,12 @@
 typedef struct
 {
 	tn_struct_t parent;
-	mowgli_string_t *strprop;
+	tn_buffer_t *strprop;
 	char v1;
 	char v2;
 	char v3;
 	int32_t v4;
+	tn_buffer_t *v5;
 } tn_package_name_structb_t;
 tn_package_name_structb_t* tn_package_name_structb_init(tn_package_name_structb_t *ret);
 tn_package_name_structb_t* tn_package_name_structb_create();
@@ -25,7 +26,7 @@ void tn_package_name_structb_destroy(tn_package_name_structb_t*);
 typedef struct
 {
 	tn_struct_t parent;
-	mowgli_string_t *strprop;
+	tn_buffer_t *strprop;
 	tn_package_name_structb_t *structprop;
 	tn_list_t *listprop;
 	tn_map_t *mapprop;

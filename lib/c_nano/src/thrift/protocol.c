@@ -1,6 +1,8 @@
 
+#include <mowgli/mowgli.h>
 #include <protocol.h>
-#include <struct.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 //==========================================================================
@@ -56,8 +58,12 @@ static size_t tn_protocol_write_list_begin(tn_protocol_t *self, tn_transport_t *
 static size_t tn_protocol_write_list_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
 static size_t tn_protocol_write_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t keyType, tn_type_t valueType, int32_t size) {return 0;}
 static size_t tn_protocol_write_map_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_write_bytes(tn_protocol_t *self, tn_transport_t *transport, void *s, int32_t len) {return 0;}
-static size_t tn_protocol_write_string(tn_protocol_t *self, tn_transport_t *transport, mowgli_string_t *v) {return 0;}
+static size_t tn_protocol_write_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len) {return 0;}
+static size_t tn_protocol_write_bytes_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
+static size_t tn_protocol_write_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *s) {return 0;}
+static size_t tn_protocol_write_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len) {return 0;}
+static size_t tn_protocol_write_string_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
+static size_t tn_protocol_write_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v) {return 0;}
 static size_t tn_protocol_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v) {return 0;}
 static size_t tn_protocol_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v) {return 0;}
 static size_t tn_protocol_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v) {return 0;}
@@ -73,8 +79,12 @@ static size_t tn_protocol_read_list_begin(tn_protocol_t *self, tn_transport_t *t
 static size_t tn_protocol_read_list_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
 static size_t tn_protocol_read_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *keyType, tn_type_t *valueType, int32_t *size) {return 0;}
 static size_t tn_protocol_read_map_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_read_bytes(tn_protocol_t *self, tn_transport_t *transport, void *s, int32_t *len) {return 0;}
-static size_t tn_protocol_read_string(tn_protocol_t *self, tn_transport_t *transport, mowgli_string_t *v) {return 0;}
+static size_t tn_protocol_read_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len) {return 0;}
+static size_t tn_protocol_read_bytes_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
+static size_t tn_protocol_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len) {return 0;}
+static size_t tn_protocol_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len) {return 0;}
+static size_t tn_protocol_read_string_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
+static size_t tn_protocol_read_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len) {return 0;}
 static size_t tn_protocol_read_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t *v) {return 0;}
 static size_t tn_protocol_read_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t *v) {return 0;}
 static size_t tn_protocol_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v) {return 0;}
@@ -94,7 +104,11 @@ tn_protocol_init(tn_protocol_t *protocol)
 	protocol->tn_write_list_end      = &tn_protocol_write_list_end;
 	protocol->tn_write_map_begin     = &tn_protocol_write_map_begin;
 	protocol->tn_write_map_end       = &tn_protocol_write_map_end;
+	protocol->tn_write_bytes_begin   = &tn_protocol_write_bytes_begin;
+	protocol->tn_write_bytes_end     = &tn_protocol_write_bytes_end;
 	protocol->tn_write_bytes         = &tn_protocol_write_bytes;
+	protocol->tn_write_string_begin  = &tn_protocol_write_string_begin;
+	protocol->tn_write_string_end    = &tn_protocol_write_string_end;
 	protocol->tn_write_string        = &tn_protocol_write_string;
 	protocol->tn_write_int16         = &tn_protocol_write_int16;
 	protocol->tn_write_int32         = &tn_protocol_write_int32;
@@ -103,23 +117,27 @@ tn_protocol_init(tn_protocol_t *protocol)
 	protocol->tn_write_double        = &tn_protocol_write_double;
 	protocol->tn_write_bool	         = &tn_protocol_write_bool;
 
-	protocol->tn_read_field_begin   = &tn_protocol_read_field_begin;
-	protocol->tn_read_field_end     = &tn_protocol_read_field_end;
-	protocol->tn_read_field_stop    = &tn_protocol_read_field_stop;
-	protocol->tn_read_struct_begin  = &tn_protocol_read_struct_begin;
-	protocol->tn_read_struct_end    = &tn_protocol_read_struct_end;
-	protocol->tn_read_list_begin    = &tn_protocol_read_list_begin;
-	protocol->tn_read_list_end      = &tn_protocol_read_list_end;
-	protocol->tn_read_map_begin     = &tn_protocol_read_map_begin;
-	protocol->tn_read_map_end       = &tn_protocol_read_map_end;
-	protocol->tn_read_bytes         = &tn_protocol_read_bytes;
-	protocol->tn_read_string        = &tn_protocol_read_string;
-	protocol->tn_read_int16         = &tn_protocol_read_int16;
-	protocol->tn_read_int32         = &tn_protocol_read_int32;
-	protocol->tn_read_int64         = &tn_protocol_read_int64;
-	protocol->tn_read_byte          = &tn_protocol_read_byte;
-	protocol->tn_read_double        = &tn_protocol_read_double;
-	protocol->tn_read_bool	        = &tn_protocol_read_bool;
+	protocol->tn_read_field_begin    = &tn_protocol_read_field_begin;
+	protocol->tn_read_field_end      = &tn_protocol_read_field_end;
+	protocol->tn_read_field_stop     = &tn_protocol_read_field_stop;
+	protocol->tn_read_struct_begin   = &tn_protocol_read_struct_begin;
+	protocol->tn_read_struct_end     = &tn_protocol_read_struct_end;
+	protocol->tn_read_list_begin     = &tn_protocol_read_list_begin;
+	protocol->tn_read_list_end       = &tn_protocol_read_list_end;
+	protocol->tn_read_map_begin      = &tn_protocol_read_map_begin;
+	protocol->tn_read_map_end        = &tn_protocol_read_map_end;
+	protocol->tn_read_bytes_begin    = &tn_protocol_read_bytes_begin;
+	protocol->tn_read_bytes_end      = &tn_protocol_read_bytes_end;
+	protocol->tn_read_bytes          = &tn_protocol_read_bytes;
+	protocol->tn_read_string_begin   = &tn_protocol_read_string_begin;
+	protocol->tn_read_string_end     = &tn_protocol_read_string_end;
+	protocol->tn_read_string         = &tn_protocol_read_string;
+	protocol->tn_read_int16          = &tn_protocol_read_int16;
+	protocol->tn_read_int32          = &tn_protocol_read_int32;
+	protocol->tn_read_int64          = &tn_protocol_read_int64;
+	protocol->tn_read_byte           = &tn_protocol_read_byte;
+	protocol->tn_read_double         = &tn_protocol_read_double;
+	protocol->tn_read_bool	         = &tn_protocol_read_bool;
 	return protocol;
 }
 tn_protocol_t*
@@ -170,17 +188,27 @@ tn_protocol_binary_write_map_begin(tn_protocol_t *self, tn_transport_t *transpor
 	if( self->tn_write_int32(self, transport, size) <= 0 ) return -1;
 	return 6;
 }
-static size_t 
-tn_protocol_binary_write_bytes(tn_protocol_t *self, tn_transport_t *transport, void *s, int32_t len)
+static size_t
+tn_protocol_binary_write_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len)
 {
 	if( self->tn_write_int32(self, transport, len) <= 0 ) return -1;
-	if( transport->tn_write(transport, s, len) <= 0 ) return -1;
-	return len + 4;
+	return 4;
 }
 static size_t 
-tn_protocol_binary_write_string(tn_protocol_t *self, tn_transport_t *transport, mowgli_string_t *v)
+tn_protocol_binary_write_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t* buf)
 {
-	return self->tn_write_bytes(self, transport, v->str, v->pos);
+	if( transport->tn_write(transport, buf->buf, buf->pos) <= 0 ) return -1;
+	return 0;
+}
+static size_t 
+tn_protocol_binary_write_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len)
+{
+	return self->tn_write_bytes_begin(self, transport, len);
+}
+static size_t
+tn_protocol_binary_write_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v)
+{
+	return self->tn_write_bytes(self, transport, v);
 }
 static size_t 
 tn_protocol_binary_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v)
@@ -235,35 +263,30 @@ tn_protocol_binary_read_map_begin(tn_protocol_t *self, tn_transport_t *transport
 	if( self->tn_read_int32(self, transport, size) <= 0 ) return -1;
 	return 6;
 }
-static size_t 
-tn_protocol_binary_read_bytes(tn_protocol_t *self, tn_transport_t *transport, void *s, int32_t *len)
+static size_t
+tn_protocol_binary_read_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len)
 {
 	if( self->tn_read_int32(self, transport, len) <= 0 ) return -1;
-	if( transport->tn_read(transport, s, *len) <= 0 ) return -1;
-	return *len + 4;
+	return 4;
 }
 static size_t 
-tn_protocol_binary_read_string(tn_protocol_t *self, tn_transport_t *transport, mowgli_string_t *v)
+tn_protocol_binary_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len)
 {
-	mowgli_string_reset(v);
-	int32_t len;
-	char *buf;
-
-	if( self->tn_read_int32(self, transport, &len) <= 0 ) return -1;
-	
-	buf = (char*) mowgli_alloc(len);
-	if( transport->tn_read(transport, buf, len) > 0 )
-	{
-		mowgli_string_append(v, buf, len);
-	}
-	else
-	{
-		len = -5;
-	}
-	mowgli_free(buf);
-	return len + 4;
+	tn_buffer_ensure_cap(v, len);
+	if( transport->tn_read(transport, tn_buffer_get(v, len), len) <= 0 ) return -1;
+	return len;
 }
 static size_t 
+tn_protocol_binary_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len)
+{
+	return self->tn_read_bytes_begin(self, transport, len);
+}
+static size_t 
+tn_protocol_binary_read_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len)
+{
+	return self->tn_read_bytes(self, transport, v, len);
+}
+static size_t
 tn_protocol_binary_read_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t *v)
 {
 	return transport->tn_read(transport, v, sizeof(int16_t));
@@ -305,7 +328,9 @@ tn_protocol_binary_init(tn_protocol_binary_t *binproto)
 	protocol->tn_write_field_stop    = &tn_protocol_binary_write_field_stop;
 	protocol->tn_write_list_begin    = &tn_protocol_binary_write_list_begin;
 	protocol->tn_write_map_begin     = &tn_protocol_binary_write_map_begin;
+	protocol->tn_write_bytes_begin   = &tn_protocol_binary_write_bytes_begin;
 	protocol->tn_write_bytes         = &tn_protocol_binary_write_bytes;
+	protocol->tn_write_string_begin  = &tn_protocol_binary_write_string_begin;
 	protocol->tn_write_string        = &tn_protocol_binary_write_string;
 	protocol->tn_write_int16         = &tn_protocol_binary_write_int16;
 	protocol->tn_write_int32         = &tn_protocol_binary_write_int32;
@@ -314,17 +339,19 @@ tn_protocol_binary_init(tn_protocol_binary_t *binproto)
 	protocol->tn_write_double        = &tn_protocol_binary_write_double;
 	protocol->tn_write_bool    	     = &tn_protocol_binary_write_bool;
 
-	protocol->tn_read_field_begin   = &tn_protocol_binary_read_field_begin;
-	protocol->tn_read_list_begin    = &tn_protocol_binary_read_list_begin;
-	protocol->tn_read_map_begin     = &tn_protocol_binary_read_map_begin;
-	protocol->tn_read_bytes         = &tn_protocol_binary_read_bytes;
-	protocol->tn_read_string        = &tn_protocol_binary_read_string;
-	protocol->tn_read_int16         = &tn_protocol_binary_read_int16;
-	protocol->tn_read_int32         = &tn_protocol_binary_read_int32;
-	protocol->tn_read_int64         = &tn_protocol_binary_read_int64;
-	protocol->tn_read_byte          = &tn_protocol_binary_read_byte;
-	protocol->tn_read_double        = &tn_protocol_binary_read_double;
-	protocol->tn_read_bool          = &tn_protocol_binary_read_bool;
+	protocol->tn_read_field_begin    = &tn_protocol_binary_read_field_begin;
+	protocol->tn_read_list_begin     = &tn_protocol_binary_read_list_begin;
+	protocol->tn_read_map_begin      = &tn_protocol_binary_read_map_begin;
+	protocol->tn_read_bytes_begin    = &tn_protocol_binary_read_bytes_begin;
+	protocol->tn_read_bytes          = &tn_protocol_binary_read_bytes;
+	protocol->tn_read_string_begin   = &tn_protocol_binary_read_string_begin;
+	protocol->tn_read_string         = &tn_protocol_binary_read_string;
+	protocol->tn_read_int16          = &tn_protocol_binary_read_int16;
+	protocol->tn_read_int32          = &tn_protocol_binary_read_int32;
+	protocol->tn_read_int64          = &tn_protocol_binary_read_int64;
+	protocol->tn_read_byte           = &tn_protocol_binary_read_byte;
+	protocol->tn_read_double         = &tn_protocol_binary_read_double;
+	protocol->tn_read_bool           = &tn_protocol_binary_read_bool;
 	return binproto;
 }
 tn_protocol_binary_t*
