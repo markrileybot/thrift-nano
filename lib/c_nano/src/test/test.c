@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <time.h>
 
-//#define CALLS 1000000
-#define CALLS 100
+#define CALLS 1000000
+//#define CALLS 100
 #define STRING1 "Heres some string data"
 #define STRING2 ".  Here is some more data"
 

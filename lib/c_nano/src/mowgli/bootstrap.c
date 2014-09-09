@@ -23,7 +23,6 @@
 
 #include "mowgli.h"
 
-extern void mowgli_node_bootstrap(void);
 extern void mowgli_allocator_bootstrap(void);
 
 static bool bootstrapped = 0;
@@ -35,7 +34,6 @@ MOWGLI_BOOTSTRAP_FUNC(mowgli_bootstrap_real)
 		return;
 
 	/* initial bootstrap */
-	mowgli_node_bootstrap();
 	mowgli_allocator_bootstrap();
 
 	/* now that we're bootstrapped, we can use a more optimised allocator
@@ -52,7 +50,6 @@ mowgli_shutdown()
 		return;
 
 	mowgli_allocator_shutdown();
-	mowgli_node_shutdown();
 
 	bootstrapped = false;
 }
