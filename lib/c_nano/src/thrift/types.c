@@ -1,67 +1,94 @@
-#include <thrift_types.h>
+#include <thrift/types.h>
+#include <thrift/mem.h>
 #include <string.h>
 #include <mowgli/mowgli.h>
+#include "types.h"
 
 #define HASH_PRIME 37
 #define HASH_START 17
 // Doug Lea's supplemental hash function
 #define HASH2(h) (h ^ (h >> 20) ^ (h >> 12) ^ (h >> 7) ^ (h >> 4))
 
+
+const char*
+tn_error_str(tn_error_t t)
+{
+    printf("Error: %d\n", t);
+    switch(t)
+    {
+        case T_ERR_ALLOC_FAILED:        return "ALLOC FAILED";
+        case T_ERR_ALLOC_NOT_SUPPORTED: return "ALLOC NOT SUPPORTED";
+        case T_ERR_BUFFER_OVERFLOW:     return "BUFFER OVERFLOW";
+        case T_ERR_BUFFER_UNDERFLOW:    return "BUFFER UNDERFLOW";
+    }
+    return "UNKNOWN ERROR";
+}
+
+
 tn_list_t* 
-tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn_type_t type)
-{	
+tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn_type_t type, tn_error_t *error)
+{
 	list->elem_size = elem_size;
 	list->elem_count = 0;
 	list->type = type;
-	if( list->data == NULL )
-	{		
-		list->elem_cap = elem_count;
-		list->data = mowgli_alloc_array(list->elem_size, list->elem_cap);
-		memset(list->data, 0, list->elem_size * list->elem_cap);
-		list->growable = TRUE;
+    list->elem_cap = elem_count;
+    if( list->data == NULL )
+	{
+        list->data = tn_alloc_array(list->elem_size, list->elem_cap, error);
+        if( *error == 0 ) list->growable = true;
 	}
 	return list;
 }
 
 tn_list_t* 
-tn_list_create(size_t elem_size, size_t elem_count, tn_type_t type)
+tn_list_create(size_t elem_size, size_t elem_count, tn_type_t type, tn_error_t *error)
 {
-	tn_list_t *list = mowgli_alloc(sizeof(tn_list_t));
+	tn_list_t *list = tn_alloc(sizeof(tn_list_t), error);
+    if( *error != 0 ) return NULL;
 	list->data = NULL;
 	list->elem_size = 0;
 	list->elem_count = 0;
 	list->elem_cap = 0;
 	list->type = T_STOP;
-	list->growable = FALSE;
-	return tn_list_init(list, elem_size, elem_count, type);
+	list->growable = false;
+	return tn_list_init(list, elem_size, elem_count, type, error);
 }
 
 static void
-tn_list_grow(tn_list_t *list, size_t atleast)
+tn_list_grow(tn_list_t *list, size_t atleast, tn_error_t *error)
 {
-	size_t new_cap = MAX(list->elem_cap * 2, list->elem_cap + atleast + list->elem_size * 2);
-	void *new_data = mowgli_alloc(new_cap * list->elem_size);	
-	memcpy(new_data, list->data, list->elem_count * list->elem_size);
-	mowgli_free(list->data);
-	list->data = new_data;
-	list->elem_cap = new_cap;
+	size_t new_cap = MAX(list->elem_cap * 2, list->elem_cap + atleast + 2);
+	void *new_data = tn_alloc_array(list->elem_size, new_cap, error);
+    if( *error == 0 )
+    {
+        memcpy(new_data, list->data, list->elem_count * list->elem_size);
+        tn_free(list->data);
+        list->data = new_data;
+        list->elem_cap = new_cap;
+    }
+}
+
+void
+tn_list_ensure_cap(tn_list_t *list, size_t count, tn_error_t *error)
+{
+    if( list->growable )
+    {
+        if( list->elem_cap - list->elem_count < count )
+        {
+            tn_list_grow(list, count, error);
+        }
+    }
+    else
+    {
+        *error = T_ERR_BUFFER_OVERFLOW;
+    }
 }
 
 void* 
-tn_list_append(tn_list_t *list)
+tn_list_append(tn_list_t *list, tn_error_t *error)
 {
-	size_t remaining = list->elem_cap - list->elem_count;
-	if( remaining <= 0 )
-	{
-		if( list->growable )
-		{
-			tn_list_grow(list, list->elem_size);
-		}
-		else
-		{
-			return NULL;
-		}
-	}
+    tn_list_ensure_cap(list, 1, error);
+    if( *error != 0 ) return NULL;
 	list->elem_count++;
 	return list->data + ((list->elem_count - 1) * list->elem_size);
 }
@@ -103,8 +130,8 @@ tn_list_pop(tn_list_t *list)
 void 
 tn_list_destroy(tn_list_t *list)
 {
-	mowgli_free(list->data);
-	mowgli_free(list);
+	tn_free(list->data);
+	tn_free(list);
 }
 
 
@@ -121,12 +148,20 @@ tn_buffer_ensure_cap(tn_buffer_t *mem, size_t len)
 {
 	if( mem->growable && mem->len - mem->pos <= len )
 	{
+        tn_error_t error = T_ERR_OK;
 		size_t nl = mem->pos + len + 1;
-		void *newbuf = mowgli_alloc(nl);
-		memcpy(newbuf, mem->buf, mem->pos);
-		mowgli_free(mem->buf);
-		mem->buf = newbuf;
-		mem->len = nl;
+		void *newbuf = tn_alloc(nl, &error);
+        if( error == 0 )
+        {
+            memcpy(newbuf, mem->buf, mem->pos);
+            tn_free(mem->buf);
+            mem->buf = newbuf;
+            mem->len = nl;
+        }
+        else
+        {
+            len = MIN(len, mem->len - mem->pos);
+        }
 	}
 	else
 	{
@@ -156,31 +191,31 @@ tn_buffer_reset(tn_buffer_t *self)
 	self->pos = 0;
 }
 tn_buffer_t *
-tn_buffer_init(tn_buffer_t *self, size_t bufferSize)
+tn_buffer_init(tn_buffer_t *self, size_t bufferSize, tn_error_t *error)
 {
 	if( self->buf == NULL )
 	{
-		self->buf = mowgli_alloc(bufferSize);
-		self->growable = TRUE;
-	}	
+		self->buf = tn_alloc(bufferSize, error);
+		self->growable = true;
+	}
 	self->pos = 0;
 	self->len = bufferSize;
 	return self;
 }
-tn_buffer_t*
-tn_buffer_create(size_t bufferSize)
+tn_buffer_t *
+tn_buffer_create(size_t bufferSize, tn_error_t *error)
 {
-	tn_buffer_t *t = mowgli_alloc(sizeof(tn_buffer_t));
-	if( t == NULL ) return NULL;
+	tn_buffer_t *t = tn_alloc(sizeof(tn_buffer_t), error);
+    if( *error != 0 ) return NULL;
 	t->buf = NULL;
-	t->growable = FALSE;
-	return tn_buffer_init(t, bufferSize);
+	t->growable = false;
+	return tn_buffer_init(t, bufferSize, error);
 }
 void
 tn_buffer_destroy(tn_buffer_t *self)
 {
-	mowgli_free(self->buf);
-	mowgli_free(self);
+	tn_free(self->buf);
+	tn_free(self);
 }
 
 
@@ -188,9 +223,9 @@ tn_buffer_destroy(tn_buffer_t *self)
 static int32_t
 tn_map_hash(tn_map_t *map, char *key)
 {
-	size_t i, len;
+	size_t i, len = 0;
 	int32_t hash = HASH_START;
-	switch(map->keys->elem_size)
+	switch(map->key_size)
 	{
 	case 8:
 		hash = (int32_t) (*((int64_t*)key) ^ (*((int64_t*)key) >> 32)); break;
@@ -210,10 +245,10 @@ tn_map_hash(tn_map_t *map, char *key)
 	// return HASH2(hash) & (map->entry_cap - 1);
 	return hash % map->entry_cap;
 }
-static mowgli_boolean_t
+static bool
 tn_map_eq(tn_map_t *map, void *key0, void *key1)
 {
-	return memcmp(key0, key1, map->keys->elem_size) == 0 ? TRUE : FALSE;
+	return memcmp(key0, key1, map->key_size) == 0 ? true : false;
 }
 //static size_t
 //tn_map_topow2(size_t i)
@@ -226,8 +261,8 @@ tn_map_eq(tn_map_t *map, void *key0, void *key1)
 //    i |= i >> 16;
 //    return i + 1;
 //}
-static void
-tn_map_rebuild(tn_map_t *map)
+void
+tn_map_rebuild(tn_map_t *map, tn_error_t *error)
 {
 	size_t i, cap, len;
 	tn_map_elem_t *e, *p;
@@ -236,7 +271,7 @@ tn_map_rebuild(tn_map_t *map)
 
 	cap = map->entry_cap;
 	e = p = k = v = NULL;
-	len = map->keys->elem_count;
+	len = map->kvs->elem_count;
 	memset(map->entries, 0, cap * sizeof(tn_map_elem_t*));
 
 	// the elems list is broken now
@@ -245,8 +280,8 @@ tn_map_rebuild(tn_map_t *map)
 
 	for( i = 0; i < len; i++ )
 	{
-		k = tn_list_get(map->keys, i);
-		v = tn_list_get(map->values, i);
+		k = tn_list_get(map->kvs, i);
+		v = k + map->key_size;
 		h = tn_map_hash(map, k);
 		e = p = map->entries[h];
 
@@ -254,8 +289,8 @@ tn_map_rebuild(tn_map_t *map)
 		{
 			if( tn_map_eq(map, k, e->key) )
 			{
-				// shouldn't happen
-				memcpy(e->value, v, map->values->elem_size);
+				// shouldn't happen but just in case
+				memcpy(e->value, v, map->val_size);
 				break;
 			}
 			else
@@ -266,7 +301,7 @@ tn_map_rebuild(tn_map_t *map)
 		}
 		if( e == NULL )
 		{
-			e = tn_list_append(map->elems);
+			e = tn_list_append(map->elems, error);
 			e->key = k;
 			e->value = v;
 			e->index = i;
@@ -284,30 +319,32 @@ tn_map_rebuild(tn_map_t *map)
 	}
 }
 static void
-tn_map_grow(tn_map_t *map)
+tn_map_grow(tn_map_t *map, tn_error_t *error)
 {
 	// create the newer larger entries array.  we can dump the old array
 	// cause we have the data in the key/value lists
 	size_t newcap = map->entry_cap * 2;
-	mowgli_free(map->entries);
+	tn_free(map->entries);
 	map->entry_cap = newcap;
-	map->entries = mowgli_alloc_array(sizeof(tn_map_elem_t*), newcap);
+	map->entries = tn_alloc_array(sizeof(tn_map_elem_t*), newcap, error);
+    if( *error != 0 ) return;
 	memset(map->entries, 0, newcap * sizeof(tn_map_elem_t*));
 
 	// grow lists to support new map size
-	tn_list_grow(map->elems, newcap);
-	tn_list_grow(map->keys, newcap);
-	tn_list_grow(map->values, newcap);
+	tn_list_grow(map->elems, newcap, error);
+    if( *error != 0 ) return;
+	tn_list_grow(map->kvs, newcap, error);
+    if( *error != 0 ) return;
 
 	// rebuild the map from the key/value lists
-	tn_map_rebuild(map);
+	tn_map_rebuild(map, error);
 }
 
 tn_map_elem_t *
-tn_map_put(tn_map_t *map, void *key, void *value)
+tn_map_put(tn_map_t *map, void *key, void *value, tn_error_t *error)
 {
 	tn_map_elem_t *e, *p;
-	e = p = NULL;
+    e = p = NULL;
 	int32_t h = tn_map_hash(map, key);
 
 	p = map->entries[h];
@@ -316,7 +353,7 @@ tn_map_put(tn_map_t *map, void *key, void *value)
 	{
 		if( tn_map_eq(map, key, e->key) )
 		{
-			memcpy(e->value, value, map->values->elem_size);
+			memcpy(e->value, value, map->val_size);
 			break;
 		}
 		else
@@ -327,29 +364,31 @@ tn_map_put(tn_map_t *map, void *key, void *value)
 	}
 	if( e == NULL )
 	{
-		e = tn_list_append(map->elems);
-		e->key = tn_list_append(map->keys);
-		e->value = tn_list_append(map->values);
-		e->index = map->elems->elem_count - 1;
-		e->next = NULL;
+		e = tn_list_append(map->elems, error);
+        if( *error == 0 )
+        {
+            e->key = tn_list_append(map->kvs, error);
+            e->value = e->key + map->key_size;
+            e->index = map->elems->elem_count - 1;
+            e->next = NULL;
 
-		memcpy(e->key, key, map->keys->elem_size);
-		memcpy(e->value, value, map->values->elem_size);
+            memcpy(e->key, key, map->key_size);
+            memcpy(e->value, value, map->val_size);
 
-		if( p != NULL )
-		{
-			p->next = e;
-		}
-		else
-		{
-			map->entries[h] = e;
-		}
+            if (p != NULL)
+            {
+                p->next = e;
+            }
+            else
+            {
+                map->entries[h] = e;
+            }
 
-		if( map->growable && map->keys->elem_count >= map->entry_cap * .75f )
-		{
-			// double capacity if supported
-			tn_map_grow(map);
-		}
+            if (map->growable && map->kvs->elem_count >= map->entry_cap * .75f) {
+                // double capacity if supported
+                tn_map_grow(map, error);
+            }
+        }
 	}
 
 	return e;
@@ -380,13 +419,13 @@ tn_map_get(tn_map_t *map, size_t index)
 void
 tn_map_remove(tn_map_t *map, void *key)
 {
+    tn_error_t error = T_ERR_OK;
 	tn_map_elem_t *e = tn_map_find(map, key);
 	if( e != NULL )
 	{
-		tn_list_remove(map->keys, e->index);
-		tn_list_remove(map->values, e->index);
+		tn_list_remove(map->kvs, e->index);
 		tn_list_remove(map->elems, e->index);
-		tn_map_rebuild(map);
+		tn_map_rebuild(map, &error);
 	}
 }
 void
@@ -394,61 +433,56 @@ tn_map_clear(tn_map_t *map)
 {
 	memset(map->entries, 0, sizeof(tn_map_elem_t*) * map->entry_cap);
 	tn_list_clear(map->elems);
-	tn_list_clear(map->keys);
-	tn_list_clear(map->values);
+	tn_list_clear(map->kvs);
 }
 tn_map_t*
-tn_map_init(tn_map_t *map, size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count)
+tn_map_init(tn_map_t *map, size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count, tn_error_t *error)
 {
 	map->entry_cap = elem_count;
+    map->key_size = key_size;
+    map->val_size = value_size;
+    map->key_type = key_type;
+    map->val_type = value_type;
 
 	if( map->entries == NULL )
 	{
-		map->entries = mowgli_alloc_array(sizeof(tn_map_elem_t*), elem_count);
-		memset(map->entries, 0, sizeof(tn_map_elem_t*) * elem_count);
-		map->growable = TRUE;
+        map->entries = tn_alloc_array(sizeof(tn_map_elem_t*), elem_count, error);
+        if( *error == 0 )
+        {
+            memset(map->entries, 0, sizeof(tn_map_elem_t *) * elem_count);
+            map->growable = true;
+        }
 	}
-	if( map->keys == NULL )
+	if( map->kvs == NULL )
 	{
-		map->keys = tn_list_create(key_size, elem_count, key_type);
-		map->keys->growable = FALSE;
-	}
-	if( map->values == NULL )
-	{
-		map->values = tn_list_create(value_size, elem_count, value_type);
-		map->keys->growable = FALSE;
+        map->kvs = tn_list_create(key_size + value_size, elem_count, T_STOP, error);
 	}
 	if( map->elems == NULL )
 	{
-		map->elems = tn_list_create(sizeof(tn_map_elem_t), elem_count, T_STOP);
-		map->keys->growable = FALSE;
+		map->elems = tn_list_create(sizeof(tn_map_elem_t), elem_count, T_STOP, error);
 	}
 
 	return map;
 }
-tn_map_t*
-tn_map_create(size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count)
+tn_map_t *
+tn_map_create(size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count, tn_error_t *error)
 {
-	tn_map_t *map = mowgli_alloc(sizeof(tn_map_t));
+	tn_map_t *map = tn_alloc(sizeof(tn_map_t), error);
+    if( *error != 0 ) return NULL;
 	map->entry_cap = 0;
 	map->entries = NULL;
 	map->elems = NULL;
-	map->keys = NULL;
-	map->values = NULL;
-	map->growable = FALSE;
-	return tn_map_init(map, key_size, value_size, key_type, value_type, elem_count);//tn_map_topow2(elem_count));
+	map->kvs = NULL;
+	map->growable = false;
+	return tn_map_init(map, key_size, value_size, key_type, value_type, elem_count, error);//tn_map_topow2(elem_count));
 }
 void
 tn_map_destroy(tn_map_t *map)
 {
-	if( map->entries != NULL )
-	{
-		mowgli_free(map->entries);
-	}
+    tn_free(map->entries);
 	tn_list_destroy(map->elems);
-	tn_list_destroy(map->keys);
-	tn_list_destroy(map->values);
-	mowgli_free(map);
+	tn_list_destroy(map->kvs);
+	tn_free(map);
 }
 
 

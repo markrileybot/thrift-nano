@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 2.6)
 project (thrift-nano)
-set (thrift-nano_VERSION_MAJOR 0)
-set (thrift-nano_VERSION_MINOR 1)
-set (thrift-nano_VERSION_PATCH 0)
+set (THRIFT_NANO_VERSION_MAJOR 0)
+set (THRIFT_NANO_VERSION_MINOR 1)
+set (THRIFT_NANO_VERSION_PATCH 0)
 
 #set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -Os -s")
 #set(CMAKE_C_FLAGS 				"${CMAKE_C_FLAGS} -ggdb -Wall")
@@ -16,6 +16,5 @@ configure_file (
 
 include_directories("${PROJECT_BINARY_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src")
-include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src/thrift")
 include_directories("${PROJECT_SOURCE_DIR}/lib/c_nano/src/test")
 add_subdirectory(lib/c_nano/src)

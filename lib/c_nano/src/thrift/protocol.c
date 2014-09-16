@@ -1,15 +1,16 @@
 
 #include <mowgli/mowgli.h>
-#include <protocol.h>
-#include <stdbool.h>
-#include <stddef.h>
+#include <thrift/protocol.h>
+#include <thrift/mem.h>
 #include <stdint.h>
+
 
 //==========================================================================
 //
 //  Utils
 //
 //==========================================================================
+
 
 static int64_t
 tn_protocol_double_to_int64(double v)
@@ -34,11 +35,11 @@ tn_protocol_int64_to_double(int64_t v)
 }
 
 static size_t 
-tn_protocol_read_type(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *v)
+tn_protocol_read_type(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *v, tn_error_t *error)
 {
 	int8_t t;
-	self->tn_read_byte(self, transport, &t);
-	*v = t;
+	self->tn_read_byte(self, transport, &t, error);
+	*v = (tn_type_t) t;
 	return 1;
 }
 
@@ -49,52 +50,53 @@ tn_protocol_read_type(tn_protocol_t *self, tn_transport_t *transport, tn_type_t 
 //
 //==========================================================================
 
-static size_t tn_protocol_write_field_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t fieldType, int16_t fieldId) {return 0;}
-static size_t tn_protocol_write_field_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_write_field_stop(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_write_struct_begin(tn_protocol_t *self, tn_transport_t *transport, void *s) {return 0;}
-static size_t tn_protocol_write_struct_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_write_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t elemType, int32_t size) {return 0;}
-static size_t tn_protocol_write_list_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_write_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t keyType, tn_type_t valueType, int32_t size) {return 0;}
-static size_t tn_protocol_write_map_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_write_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len) {return 0;}
-static size_t tn_protocol_write_bytes_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_write_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *s) {return 0;}
-static size_t tn_protocol_write_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len) {return 0;}
-static size_t tn_protocol_write_string_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_write_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v) {return 0;}
-static size_t tn_protocol_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v) {return 0;}
-static size_t tn_protocol_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v) {return 0;}
-static size_t tn_protocol_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v) {return 0;}
-static size_t tn_protocol_write_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t v) {return 0;}
-static size_t tn_protocol_write_double(tn_protocol_t *self, tn_transport_t *transport, double v) {return 0;}
-static size_t tn_protocol_write_bool(tn_protocol_t *self, tn_transport_t *transport, bool v) {return 0;}
-static size_t tn_protocol_read_field_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *fieldType, int16_t *fieldId) {return 0;}
-static size_t tn_protocol_read_field_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_read_field_stop(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_read_struct_begin(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_read_struct_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_read_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *elemType, int32_t *size) {return 0;}
-static size_t tn_protocol_read_list_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_read_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *keyType, tn_type_t *valueType, int32_t *size) {return 0;}
-static size_t tn_protocol_read_map_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_read_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len) {return 0;}
-static size_t tn_protocol_read_bytes_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len) {return 0;}
-static size_t tn_protocol_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len) {return 0;}
-static size_t tn_protocol_read_string_end(tn_protocol_t *self, tn_transport_t *transport) {return 0;}
-static size_t tn_protocol_read_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len) {return 0;}
-static size_t tn_protocol_read_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t *v) {return 0;}
-static size_t tn_protocol_read_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t *v) {return 0;}
-static size_t tn_protocol_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v) {return 0;}
-static size_t tn_protocol_read_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t *v) {return 0;}
-static size_t tn_protocol_read_double(tn_protocol_t *self, tn_transport_t *transport, double *v) {return 0;}
-static size_t tn_protocol_read_bool(tn_protocol_t *self, tn_transport_t *transport, bool *v) {return 0;}
+static size_t tn_protocol_write_field_begin     (tn_protocol_t *self, tn_transport_t *transport, const char *fieldName, tn_type_t fieldType, int16_t fieldId, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_field_end       (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_field_stop      (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_struct_begin    (tn_protocol_t *self, tn_transport_t *transport, void *s, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_struct_end      (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_list_begin      (tn_protocol_t *self, tn_transport_t *transport, tn_list_t *list, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_list_end        (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_map_begin       (tn_protocol_t *self, tn_transport_t *transport, tn_map_t *map, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_map_end         (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_bytes_begin     (tn_protocol_t *self, tn_transport_t *transport, int32_t len, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_bytes_end       (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_bytes           (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *s, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_string_begin    (tn_protocol_t *self, tn_transport_t *transport, int32_t len, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_string_end      (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_string          (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_int16           (tn_protocol_t *self, tn_transport_t *transport, int16_t v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_int32           (tn_protocol_t *self, tn_transport_t *transport, int32_t v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_int64           (tn_protocol_t *self, tn_transport_t *transport, int64_t v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_byte            (tn_protocol_t *self, tn_transport_t *transport, int8_t v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_double          (tn_protocol_t *self, tn_transport_t *transport, double v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_write_bool            (tn_protocol_t *self, tn_transport_t *transport, bool v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_field_begin      (tn_protocol_t *self, tn_transport_t *transport, const char *fieldName, tn_type_t *fieldType, int16_t *fieldId, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_field_end        (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_field_stop       (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_struct_begin     (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_struct_end       (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_list_begin       (tn_protocol_t *self, tn_transport_t *transport, tn_type_t *elemType, int32_t *size, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_list_end         (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_map_begin        (tn_protocol_t *self, tn_transport_t *transport, tn_type_t *keyType, tn_type_t *valueType, int32_t *size, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_map_end          (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_bytes_begin      (tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_bytes_end        (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_bytes            (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_string_begin     (tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_string_end       (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_string           (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_int16            (tn_protocol_t *self, tn_transport_t *transport, int16_t *v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_int32            (tn_protocol_t *self, tn_transport_t *transport, int32_t *v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_int64            (tn_protocol_t *self, tn_transport_t *transport, int64_t *v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_byte             (tn_protocol_t *self, tn_transport_t *transport, int8_t *v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_double           (tn_protocol_t *self, tn_transport_t *transport, double *v, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_bool             (tn_protocol_t *self, tn_transport_t *transport, bool *v, tn_error_t *error) {return 0;}
 
 tn_protocol_t*
-tn_protocol_init(tn_protocol_t *protocol)
+tn_protocol_init(tn_protocol_t *protocol, tn_error_t *error)
 {
+    protocol->block_container_io     = false;
 	protocol->tn_write_field_begin   = &tn_protocol_write_field_begin;
 	protocol->tn_write_field_end     = &tn_protocol_write_field_end;
 	protocol->tn_write_field_stop    = &tn_protocol_write_field_stop;
@@ -141,16 +143,16 @@ tn_protocol_init(tn_protocol_t *protocol)
 	return protocol;
 }
 tn_protocol_t*
-tn_protocol_create()
+tn_protocol_create(tn_error_t *error)
 {
-	tn_protocol_t *protocol = mowgli_alloc(sizeof(tn_protocol_t));
-	if( protocol != NULL ) tn_protocol_init(protocol);
-	return protocol;
+	tn_protocol_t *protocol = tn_alloc(sizeof(tn_protocol_t), error);
+	if( *error != 0 ) return NULL;
+    return tn_protocol_init(protocol, error);
 }
 void
 tn_protocol_destroy(tn_protocol_t* t)
 {
-	mowgli_free(t);
+	tn_free(t);
 }
 
 
@@ -161,169 +163,171 @@ tn_protocol_destroy(tn_protocol_t* t)
 //==========================================================================
 
 static size_t
-tn_protocol_binary_write_field_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t fieldType, int16_t fieldId)
+tn_protocol_binary_write_field_begin(tn_protocol_t *self, tn_transport_t *transport, const char *fieldName, tn_type_t fieldType, int16_t fieldId, tn_error_t *error)
 {
-	if( self->tn_write_byte(self, transport, (int8_t)fieldType) <= 0 ) return -1;
-	if( self->tn_write_int16(self, transport, fieldId) <= 0 ) return -1;
-	return 3;
+	size_t ret = 0;
+	return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, (int8_t)fieldType, error));
+	return_if_fail_or_inc(ret, self->tn_write_int16(self, transport, fieldId, error));
+	return ret;
 }
 static size_t
-tn_protocol_binary_write_field_stop(tn_protocol_t *self, tn_transport_t *transport)
+tn_protocol_binary_write_field_stop(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error)
 {
-	if( self->tn_write_byte(self, transport, T_STOP) <= 0 ) return -1;
-	return 1;
+	return self->tn_write_byte(self, transport, T_STOP, error);
 }
 static size_t 
-tn_protocol_binary_write_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t elemType, int32_t size)
+tn_protocol_binary_write_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_list_t *list, tn_error_t *error)
 {
-	if( self->tn_write_byte(self, transport, (int8_t)elemType) <= 0 ) return -1;
-	if( self->tn_write_int32(self, transport, size) <= 0 ) return -1;
-	return 5;
+	size_t ret = 0;
+	return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, (int8_t)list->type, error));
+	return_if_fail_or_inc(ret, self->tn_write_int32(self, transport, (int32_t)list->elem_count, error));
+	return ret;
 }
 static size_t 
-tn_protocol_binary_write_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t keyType, tn_type_t valueType, int32_t size)
+tn_protocol_binary_write_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_map_t *map, tn_error_t *error)
 {
-	if( self->tn_write_byte(self, transport, (int8_t)keyType) <= 0 ) return -1;
-	if( self->tn_write_byte(self, transport, (int8_t)valueType) <= 0 ) return -1;
-	if( self->tn_write_int32(self, transport, size) <= 0 ) return -1;
-	return 6;
+	size_t ret = 0;
+	return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, (int8_t)map->key_type, error));
+	return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, (int8_t)map->val_type, error));
+	return_if_fail_or_inc(ret, self->tn_write_int32(self, transport, (int32_t)map->kvs->elem_count, error));
+	return ret;
 }
 static size_t
-tn_protocol_binary_write_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len)
+tn_protocol_binary_write_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len, tn_error_t *error)
 {
-	if( self->tn_write_int32(self, transport, len) <= 0 ) return -1;
-	return 4;
+	return self->tn_write_int32(self, transport, len, error);
 }
 static size_t 
-tn_protocol_binary_write_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t* buf)
+tn_protocol_binary_write_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t* buf, tn_error_t *error)
 {
-	if( transport->tn_write(transport, buf->buf, buf->pos) <= 0 ) return -1;
-	return 0;
+	return transport->tn_write(transport, buf->buf, buf->pos, error);
 }
 static size_t 
-tn_protocol_binary_write_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len)
+tn_protocol_binary_write_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len, tn_error_t *error)
 {
-	return self->tn_write_bytes_begin(self, transport, len);
+	return self->tn_write_bytes_begin(self, transport, len, error);
 }
 static size_t
-tn_protocol_binary_write_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v)
+tn_protocol_binary_write_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, tn_error_t *error)
 {
-	return self->tn_write_bytes(self, transport, v);
+	return self->tn_write_bytes(self, transport, v, error);
 }
 static size_t 
-tn_protocol_binary_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v)
+tn_protocol_binary_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v, tn_error_t *error)
 {
-	return transport->tn_write(transport, &v, sizeof(int16_t));
+	return transport->tn_write(transport, &v, sizeof(int16_t), error);
 }
 static size_t 
-tn_protocol_binary_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v)
+tn_protocol_binary_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v, tn_error_t *error)
 {
-	return transport->tn_write(transport, &v, sizeof(int32_t));
+	return transport->tn_write(transport, &v, sizeof(int32_t), error);
 }
 static size_t 
-tn_protocol_binary_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v)
+tn_protocol_binary_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v, tn_error_t *error)
 {
-	return transport->tn_write(transport, &v, sizeof(int64_t));
+	return transport->tn_write(transport, &v, sizeof(int64_t), error);
 }
 static size_t 
-tn_protocol_binary_write_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t v)
+tn_protocol_binary_write_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t v, tn_error_t *error)
 {
-	return transport->tn_write(transport, &v, sizeof(int8_t));
+	return transport->tn_write(transport, &v, sizeof(int8_t), error);
 }
 static size_t 
-tn_protocol_binary_write_double(tn_protocol_t *self, tn_transport_t *transport, double v)
+tn_protocol_binary_write_double(tn_protocol_t *self, tn_transport_t *transport, double v, tn_error_t *error)
 {
-	return self->tn_write_int64(self, transport, tn_protocol_double_to_int64(v));
+	return self->tn_write_int64(self, transport, tn_protocol_double_to_int64(v), error);
 }
 static size_t 
-tn_protocol_binary_write_bool(tn_protocol_t *self, tn_transport_t *transport, bool v)
+tn_protocol_binary_write_bool(tn_protocol_t *self, tn_transport_t *transport, bool v, tn_error_t *error)
 {
-	return transport->tn_write(transport, &v, sizeof(int8_t));
+	return transport->tn_write(transport, &v, sizeof(int8_t), error);
 }
 static size_t
-tn_protocol_binary_read_field_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *fieldType, int16_t *fieldId)
+tn_protocol_binary_read_field_begin(tn_protocol_t *self, tn_transport_t *transport, const char *fieldName, tn_type_t *fieldType, int16_t *fieldId, tn_error_t *error)
 {
-	if( tn_protocol_read_type(self, transport, fieldType) <= 0 ) return -1;	
-	if( *fieldType == T_STOP ) return 1;
-	if( self->tn_read_int16(self, transport, fieldId) <= 0 ) return -1;
-	return 3;
+	size_t ret = 0;
+	return_if_fail_or_inc(ret, tn_protocol_read_type(self, transport, fieldType, error));
+	if( *fieldType == T_STOP ) return ret;
+	return_if_fail_or_inc(ret, self->tn_read_int16(self, transport, fieldId, error));
+	return ret;
 }
 static size_t 
-tn_protocol_binary_read_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *elemType, int32_t *size)
+tn_protocol_binary_read_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *elemType, int32_t *size, tn_error_t *error)
 {
-	if( tn_protocol_read_type(self, transport, elemType) <= 0 ) return -1;
-	if( self->tn_read_int32(self, transport, size) <= 0 ) return -1;
-	return 5;
+	size_t ret = 0;
+	return_if_fail_or_inc(ret, tn_protocol_read_type(self, transport, elemType, error));
+	return_if_fail_or_inc(ret, self->tn_read_int32(self, transport, size, error));
+	return ret;
 }
 static size_t 
-tn_protocol_binary_read_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *keyType, tn_type_t *valueType, int32_t *size)
+tn_protocol_binary_read_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *keyType, tn_type_t *valueType, int32_t *size, tn_error_t *error)
 {
-	if( tn_protocol_read_type(self, transport, keyType) <= 0 ) return -1;
-	if( tn_protocol_read_type(self, transport, valueType) <= 0 ) return -1;
-	if( self->tn_read_int32(self, transport, size) <= 0 ) return -1;
-	return 6;
+	size_t ret = 0;
+	return_if_fail_or_inc(ret, tn_protocol_read_type(self, transport, keyType, error));
+	return_if_fail_or_inc(ret, tn_protocol_read_type(self, transport, valueType, error));
+	return_if_fail_or_inc(ret, self->tn_read_int32(self, transport, size, error));
+	return ret;
 }
 static size_t
-tn_protocol_binary_read_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len)
+tn_protocol_binary_read_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error)
 {
-	if( self->tn_read_int32(self, transport, len) <= 0 ) return -1;
-	return 4;
+	return self->tn_read_int32(self, transport, len, error);
 }
 static size_t 
-tn_protocol_binary_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len)
+tn_protocol_binary_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error)
 {
-	tn_buffer_ensure_cap(v, len);
-	if( transport->tn_read(transport, tn_buffer_get(v, len), len) <= 0 ) return -1;
-	return len;
+	return transport->tn_read(transport, tn_buffer_get(v, len), len, error);
 }
 static size_t 
-tn_protocol_binary_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len)
+tn_protocol_binary_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error)
 {
-	return self->tn_read_bytes_begin(self, transport, len);
+	return self->tn_read_bytes_begin(self, transport, len, error);
 }
 static size_t 
-tn_protocol_binary_read_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len)
+tn_protocol_binary_read_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error)
 {
-	return self->tn_read_bytes(self, transport, v, len);
+	return self->tn_read_bytes(self, transport, v, len, error);
 }
 static size_t
-tn_protocol_binary_read_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t *v)
+tn_protocol_binary_read_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t *v, tn_error_t *error)
 {
-	return transport->tn_read(transport, v, sizeof(int16_t));
+	return transport->tn_read(transport, v, sizeof(int16_t), error);
 }
 static size_t 
-tn_protocol_binary_read_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t *v)
+tn_protocol_binary_read_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t *v, tn_error_t *error)
 {
-	return transport->tn_read(transport, v, sizeof(int32_t));
+	return transport->tn_read(transport, v, sizeof(int32_t), error);
 }
 static size_t 
-tn_protocol_binary_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v)
+tn_protocol_binary_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v, tn_error_t *error)
 {
-	return transport->tn_read(transport, v, sizeof(int64_t));
+	return transport->tn_read(transport, v, sizeof(int64_t), error);
 }
 static size_t 
-tn_protocol_binary_read_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t *v)
+tn_protocol_binary_read_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t *v, tn_error_t *error)
 {
-	return transport->tn_read(transport, v, sizeof(int8_t));
+	return transport->tn_read(transport, v, sizeof(int8_t), error);
 }
 static size_t 
-tn_protocol_binary_read_bool(tn_protocol_t *self, tn_transport_t *transport, bool *v)
+tn_protocol_binary_read_bool(tn_protocol_t *self, tn_transport_t *transport, bool *v, tn_error_t *error)
 {
-	return transport->tn_read(transport, v, sizeof(int8_t));
+	return transport->tn_read(transport, v, sizeof(int8_t), error);
 }
 static size_t 
-tn_protocol_binary_read_double(tn_protocol_t *self, tn_transport_t *transport, double *v)
+tn_protocol_binary_read_double(tn_protocol_t *self, tn_transport_t *transport, double *v, tn_error_t *error)
 {
 	int64_t t;
-	self->tn_read_int64(self, transport, &t);
+	size_t ret = 0;
+	return_if_fail_or_inc(ret, self->tn_read_int64(self, transport, &t, error));
 	*v = tn_protocol_int64_to_double(t);
-	return 4;
+	return ret;
 }
 tn_protocol_binary_t*
-tn_protocol_binary_init(tn_protocol_binary_t *binproto)
+tn_protocol_binary_init(tn_protocol_binary_t *binproto, tn_error_t *error)
 {
 	tn_protocol_t *protocol = (tn_protocol_t*) binproto;
-	tn_protocol_init(protocol);
+	tn_protocol_init(protocol, error);
+    protocol->block_container_io     = true;
 	protocol->tn_write_field_begin   = &tn_protocol_binary_write_field_begin;
 	protocol->tn_write_field_stop    = &tn_protocol_binary_write_field_stop;
 	protocol->tn_write_list_begin    = &tn_protocol_binary_write_list_begin;
@@ -355,16 +359,16 @@ tn_protocol_binary_init(tn_protocol_binary_t *binproto)
 	return binproto;
 }
 tn_protocol_binary_t*
-tn_protocol_binary_create()
+tn_protocol_binary_create(tn_error_t *error)
 {
-	tn_protocol_binary_t *protocol = mowgli_alloc(sizeof(tn_protocol_binary_t));
-	if( protocol != NULL ) tn_protocol_binary_init(protocol);
-	return protocol;
+	tn_protocol_binary_t *protocol = tn_alloc(sizeof(tn_protocol_binary_t), error);
+    if( *error != 0 ) return NULL;
+	return tn_protocol_binary_init(protocol, error);
 }
 void
 tn_protocol_binary_destroy(tn_protocol_binary_t* t)
 {
-	mowgli_free(t);
+	tn_free(t);
 }
 
 
@@ -473,7 +477,7 @@ tn_protocol_compact_zigzag_to_int64(uint64_t n) {
 
 
 static size_t
-tn_protocol_compact_write_varint32(tn_protocol_t *self, tn_transport_t *transport, int32_t v)
+tn_protocol_compact_write_varint32(tn_protocol_t *self, tn_transport_t *transport, int32_t v, tn_error_t *error)
 {
 	uint32_t n = (uint32_t) v;
 	int8_t *i32buf = ((tn_protocol_compact_t*) self)->_i32buf;
@@ -491,10 +495,10 @@ tn_protocol_compact_write_varint32(tn_protocol_t *self, tn_transport_t *transpor
 			n >>= 7;
 		}
 	}
-	return transport->tn_write(transport, i32buf, idx);
+	return transport->tn_write(transport, i32buf, idx, error);
 }
 static size_t
-tn_protocol_compact_write_varint64(tn_protocol_t *self, tn_transport_t *transport, int64_t v)
+tn_protocol_compact_write_varint64(tn_protocol_t *self, tn_transport_t *transport, int64_t v, tn_error_t *error)
 {
 	uint64_t n = (uint64_t) v;
 	int8_t *i64buf = ((tn_protocol_compact_t*) self)->_i64buf;
@@ -512,39 +516,41 @@ tn_protocol_compact_write_varint64(tn_protocol_t *self, tn_transport_t *transpor
 			n >>= 7;
 		}
 	}
-	return transport->tn_write(transport, i64buf, idx);
+	return transport->tn_write(transport, i64buf, idx, error);
 }
 static size_t
-tn_protocol_compact_read_varint32(tn_protocol_t *self, tn_transport_t *transport, int32_t *n)
+tn_protocol_compact_read_varint32(tn_protocol_t *self, tn_transport_t *transport, int32_t *n, tn_error_t *error)
 {
 	int8_t b;
-	int32_t shift = 0;
+    size_t ret = 0;
+    int32_t shift = 0;
 	int32_t result = 0;
 	while (1) 
 	{
-		self->tn_read_byte(self, transport, &b);
+        return_if_fail_or_inc(ret, self->tn_read_byte(self, transport, &b, error));
 		result |= (int32_t) (b & 0x7f) << shift;
 		if ((b & 0x80) != 0x80) break;
 		shift +=7;
 	}
 	*n = result;
-	return 0;
+	return ret;
 }
 static size_t
-tn_protocol_compact_read_varint64(tn_protocol_t *self, tn_transport_t *transport, int64_t *n)
+tn_protocol_compact_read_varint64(tn_protocol_t *self, tn_transport_t *transport, int64_t *n, tn_error_t *error)
 {
 	int8_t b;
+    size_t ret = 0;
 	int32_t shift = 0;
 	int64_t result = 0;
 	while (1) 
 	{
-		self->tn_read_byte(self, transport, &b);
+        return_if_fail_or_inc(ret, self->tn_read_byte(self, transport, &b, error));
 		result |= (int64_t) (b & 0x7f) << shift;
 		if ((b & 0x80) != 0x80) break;
 		shift +=7;
 	}
 	*n = result;
-	return 0;
+	return ret;
 }
 
 
@@ -552,15 +558,15 @@ tn_protocol_compact_read_varint64(tn_protocol_t *self, tn_transport_t *transport
 
 
 static size_t 
-tn_protocol_compact_write_struct_begin(tn_protocol_t *self, tn_transport_t *transport, void *s)
+tn_protocol_compact_write_struct_begin(tn_protocol_t *self, tn_transport_t *transport, void *s, tn_error_t *error)
 {
 	tn_protocol_compact_t *compact = (tn_protocol_compact_t *) self;
-	int16_t *lastFieldId = tn_list_append(compact->_lastFieldIdStack);
+	int16_t *lastFieldId = tn_list_append(compact->_lastFieldIdStack, error);
 	*lastFieldId = compact->_lastFieldId;
 	return 0;
 }
 static size_t 
-tn_protocol_compact_write_struct_end(tn_protocol_t *self, tn_transport_t *transport)
+tn_protocol_compact_write_struct_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error)
 {
 	int16_t *l;
 	tn_protocol_compact_t *compact = (tn_protocol_compact_t *) self;
@@ -569,7 +575,7 @@ tn_protocol_compact_write_struct_end(tn_protocol_t *self, tn_transport_t *transp
 	return 0;
 }
 static size_t
-tn_protocol_compact_write_field_begin_i(tn_protocol_t *self, tn_transport_t *transport, tn_type_t fieldType, int16_t fieldId, int8_t override)
+tn_protocol_compact_write_field_begin_i(tn_protocol_t *self, tn_transport_t *transport, tn_type_t fieldType, int16_t fieldId, int8_t override, tn_error_t *error)
 {
 	size_t ret = 0;
 	tn_protocol_compact_t *compact = (tn_protocol_compact_t*) self;
@@ -579,20 +585,20 @@ tn_protocol_compact_write_field_begin_i(tn_protocol_t *self, tn_transport_t *tra
     if( fieldId > lastFieldId && fieldId - lastFieldId <= 15)
 	{
   		// write them together
-		ret += self->tn_write_byte(self, transport, (fieldId - lastFieldId) << 4 | type);		
+		return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, (fieldId - lastFieldId) << 4 | type, error));
     }
 	else 
 	{
 		// write them separate
-		ret += self->tn_write_byte(self, transport, type);
-		ret += self->tn_write_int16(self, transport, fieldId);
+		return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, type, error));
+		return_if_fail_or_inc(ret, self->tn_write_int16(self, transport, fieldId, error));
     }
 	
 	compact->_lastFieldId = fieldId;
 	return ret;
 }
 static size_t
-tn_protocol_compact_write_field_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t fieldType, int16_t fieldId)
+tn_protocol_compact_write_field_begin(tn_protocol_t *self, tn_transport_t *transport, const char *fielName, tn_type_t fieldType, int16_t fieldId, tn_error_t *error)
 {
 	tn_protocol_compact_t *compactSelf = (tn_protocol_compact_t*) self;
 	if( fieldType == T_BOOL )
@@ -602,85 +608,91 @@ tn_protocol_compact_write_field_begin(tn_protocol_t *self, tn_transport_t *trans
 	else
 	{
 		compactSelf->_booleanFieldId = -1;
-		return tn_protocol_compact_write_field_begin_i(self, transport, fieldType, fieldId, -1);
+		return tn_protocol_compact_write_field_begin_i(self, transport, fieldType, fieldId, -1, error);
 	}
 	return 0;
 }
 static size_t
-tn_protocol_compact_write_field_stop(tn_protocol_t *self, tn_transport_t *transport)
+tn_protocol_compact_write_field_stop(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error)
 {
-	if( self->tn_write_byte(self, transport, TNC_STOP) <= 0 ) return -1;
-	return 1;
+	return self->tn_write_byte(self, transport, TNC_STOP, error);
 }
 static size_t 
-tn_protocol_compact_write_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t elemType, int32_t size)
+tn_protocol_compact_write_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_list_t *list, tn_error_t *error)
 {
+	size_t ret = 0;
+    tn_type_t type = list->type;
+    size_t size = list->elem_count;
 	if( size <= 14 )
 	{
-		if( self->tn_write_byte(self, transport, ((uint8_t)size << 4 | tnc_type_map[elemType])) <= 0 ) return -1;
-		return 1;
+		return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, ((uint8_t)size << 4 | tnc_type_map[type]), error));
 	}
 	else
 	{
-		if( self->tn_write_byte(self, transport, 0xf0 | tnc_type_map[elemType]) <= 0 ) return -1;
-		if( self->tn_write_int32(self, transport, size) <= 0 ) return -1;		
+		return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, 0xf0 | tnc_type_map[type], error));
+		return_if_fail_or_inc(ret, self->tn_write_int32(self, transport, (int32_t) size, error));
 	}
-	return 5;
+	return ret;
 }
 static size_t 
-tn_protocol_compact_write_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t keyType, tn_type_t valueType, int32_t size)
+tn_protocol_compact_write_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_map_t *map, tn_error_t *error)
 {
-	if( self->tn_write_int32(self, transport, size) <= 0 ) return -1;
-	if( self->tn_write_byte(self, transport, tnc_type_map[keyType] << 4 | tnc_type_map[valueType]) <= 0 ) return -1;
-	return 5;
+	size_t ret = 0;
+    tn_type_t keyType = map->key_type;
+    tn_type_t valueType = map->val_type;
+    size_t size = map->kvs->elem_count;
+	return_if_fail_or_inc(ret, self->tn_write_int32(self, transport, (int32_t)size, error));
+	return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, tnc_type_map[keyType] << 4 | tnc_type_map[valueType], error));
+	return ret;
 }
 static size_t 
-tn_protocol_compact_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v)
+tn_protocol_compact_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v, tn_error_t *error)
 {
-	return tn_protocol_compact_write_varint32(self, transport, tn_protocol_compact_int32_to_zigzag(v));
+	return tn_protocol_compact_write_varint32(self, transport, tn_protocol_compact_int32_to_zigzag(v), error);
 }
 static size_t 
-tn_protocol_compact_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v)
+tn_protocol_compact_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v, tn_error_t *error)
 {
-	return tn_protocol_compact_write_varint32(self, transport, tn_protocol_compact_int32_to_zigzag(v));
+	return tn_protocol_compact_write_varint32(self, transport, tn_protocol_compact_int32_to_zigzag(v), error);
 }
 static size_t 
-tn_protocol_compact_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v)
+tn_protocol_compact_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v, tn_error_t *error)
 {
-	return tn_protocol_compact_write_varint64(self, transport, tn_protocol_compact_int64_to_zigzag(v));
+	return tn_protocol_compact_write_varint64(self, transport, tn_protocol_compact_int64_to_zigzag(v), error);
 }
 static size_t 
-tn_protocol_compact_write_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t v)
+tn_protocol_compact_write_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t v, tn_error_t *error)
 {
-	return transport->tn_write(transport, &v, sizeof(int8_t));
+	return transport->tn_write(transport, &v, sizeof(int8_t), error);
 }
 static size_t 
-tn_protocol_compact_write_bool(tn_protocol_t *self, tn_transport_t *transport, bool v)
+tn_protocol_compact_write_bool(tn_protocol_t *self, tn_transport_t *transport, bool v, tn_error_t *error)
 {
+	size_t ret = 0;
 	int16_t booleanFieldId = ((tn_protocol_compact_t *) self)->_booleanFieldId;
 	if( booleanFieldId > -1 )
 	{
-		tn_protocol_compact_write_field_begin_i(self, transport, T_BOOL, booleanFieldId, v ? TNC_BOOLEAN_TRUE : TNC_BOOLEAN_FALSE);
+		ret = tn_protocol_compact_write_field_begin_i(self, transport, T_BOOL, booleanFieldId, v ? TNC_BOOLEAN_TRUE : TNC_BOOLEAN_FALSE, error);
 		((tn_protocol_compact_t *) self)->_booleanFieldId = -1;
 	}
 	else
 	{
-		self->tn_write_byte(self, transport, v ? TNC_BOOLEAN_TRUE : TNC_BOOLEAN_FALSE);
+		ret = self->tn_write_byte(self, transport, v ? TNC_BOOLEAN_TRUE : TNC_BOOLEAN_FALSE, error);
 	}
-	return 1;
+	return ret;
 }
 
 
 static size_t 
-tn_protocol_compact_read_struct_begin(tn_protocol_t *self, tn_transport_t *transport)
+tn_protocol_compact_read_struct_begin(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error)
 {
 	tn_protocol_compact_t *compact = (tn_protocol_compact_t *) self;
-	int16_t *lastFieldId = tn_list_append(compact->_lastFieldIdStack);
+	int16_t *lastFieldId = tn_list_append(compact->_lastFieldIdStack, error);
 	*lastFieldId = compact->_lastFieldId;
 	return 0;
 }
 static size_t 
-tn_protocol_compact_read_struct_end(tn_protocol_t *self, tn_transport_t *transport)
+tn_protocol_compact_read_struct_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error)
 {
 	int16_t *l;
 	tn_protocol_compact_t *compact = (tn_protocol_compact_t *) self;
@@ -689,19 +701,20 @@ tn_protocol_compact_read_struct_end(tn_protocol_t *self, tn_transport_t *transpo
 	return 0;
 }
 static size_t
-tn_protocol_compact_read_field_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *fieldType, int16_t *fieldId)
+tn_protocol_compact_read_field_begin(tn_protocol_t *self, tn_transport_t *transport, const char *fieldName, tn_type_t *fieldType, int16_t *fieldId, tn_error_t *error)
 {
+	size_t ret = 0;
 	int8_t type;
 	int8_t boolNibble;
 	int16_t modifier;
 	tn_protocol_compact_t *compact = (tn_protocol_compact_t *) self;
 	int16_t lastFieldId = compact->_lastFieldId;
 	
-	if( self->tn_read_byte(self, transport, &type) <= 0 ) return -1;
+	return_if_fail_or_inc(ret, self->tn_read_byte(self, transport, &type, error));
 	if( type == TNC_STOP )
 	{
 		*fieldType = T_STOP;
-		return 1;
+		return ret;
 	}
 
 	// mask off the 4 MSB of the type header. it could contain a field id delta.
@@ -709,7 +722,7 @@ tn_protocol_compact_read_field_begin(tn_protocol_t *self, tn_transport_t *transp
 	if( modifier == 0 )
 	{
 		// not a delta, read normally
-		if( self->tn_read_int16(self, transport, fieldId) <= 0 ) return -1;
+		return_if_fail_or_inc(ret, self->tn_read_int16(self, transport, fieldId, error));
 	}
 	else
 	{
@@ -728,84 +741,91 @@ tn_protocol_compact_read_field_begin(tn_protocol_t *self, tn_transport_t *transp
 	}
 	
 	compact->_lastFieldId = *fieldId;
-	return 3;
+	return ret;
 }
 static size_t 
-tn_protocol_compact_read_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *elemType, int32_t *size)
+tn_protocol_compact_read_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *elemType, int32_t *size, tn_error_t *error)
 {
+	size_t ret = 0;
 	int8_t sizeAndType;
-	if( self->tn_read_byte(self, transport, &sizeAndType) <= 0 ) return -1;
+	return_if_fail_or_inc(ret, self->tn_read_byte(self, transport, &sizeAndType, error));
 	*size = ((uint8_t)sizeAndType >> 4) & 0x0f;
 	if( *size == 15 )
 	{
-		if( self->tn_read_int32(self, transport, size) <= 0 ) return -1;
+		return_if_fail_or_inc(ret, self->tn_read_int32(self, transport, size, error));
 	}
 	*elemType = tn_protocol_compact_map_type(sizeAndType & 0x0f);
-	return 5;
+	return ret;
 }
 static size_t 
-tn_protocol_compact_read_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *keyType, tn_type_t *valueType, int32_t *size)
+tn_protocol_compact_read_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *keyType, tn_type_t *valueType, int32_t *size, tn_error_t *error)
 {	
+	size_t ret = 0;
 	int8_t keyAndValueType;
-	if( self->tn_read_int32(self, transport, size) <= 0 ) return -1;
-	if( self->tn_read_byte(self, transport, &keyAndValueType) <= 0 ) return -1;
+	return_if_fail_or_inc(ret, self->tn_read_int32(self, transport, size, error));
+	return_if_fail_or_inc(ret, self->tn_read_byte(self, transport, &keyAndValueType, error));
 	*keyType = tn_protocol_compact_map_type(keyAndValueType >> 4 & 0x0f);
 	*valueType = tn_protocol_compact_map_type(keyAndValueType & 0x0f);
-	return 5;
+	return ret;
 }
 static size_t 
-tn_protocol_compact_read_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t *v)
+tn_protocol_compact_read_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t *v, tn_error_t *error)
 {
+	size_t ret = 0;
 	int32_t t;
-	tn_protocol_compact_read_varint32(self, transport, &t);
+	return_if_fail_or_inc(ret, tn_protocol_compact_read_varint32(self, transport, &t, error));
 	t = tn_protocol_compact_zigzag_to_int32(t);
 	*v = (int16_t) t;
-	return 1;
+	return ret;
 }
 static size_t 
-tn_protocol_compact_read_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t *v)
+tn_protocol_compact_read_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t *v, tn_error_t *error)
 {
-	tn_protocol_compact_read_varint32(self, transport, v);
+	size_t ret = 0;
+	return_if_fail_or_inc(ret, tn_protocol_compact_read_varint32(self, transport, v, error));
 	*v = tn_protocol_compact_zigzag_to_int32(*v);
-	return 1;
+	return ret;
 }
 static size_t 
-tn_protocol_compact_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v)
+tn_protocol_compact_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v, tn_error_t *error)
 {
-	tn_protocol_compact_read_varint64(self, transport, v);
+	size_t ret = 0;
+	return_if_fail_or_inc(ret, tn_protocol_compact_read_varint64(self, transport, v, error));
 	*v = tn_protocol_compact_zigzag_to_int64(*v);
-	return 1;
+	return ret;
 }
 static size_t 
-tn_protocol_compact_read_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t *v)
+tn_protocol_compact_read_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t *v, tn_error_t *error)
 {
-	return transport->tn_read(transport, v, sizeof(int8_t));
+	return transport->tn_read(transport, v, sizeof(int8_t), error);
 }
 static size_t
-tn_protocol_compact_read_bool(tn_protocol_t *self, tn_transport_t *transport, bool *v)
+tn_protocol_compact_read_bool(tn_protocol_t *self, tn_transport_t *transport, bool *v, tn_error_t *error)
 {
+	size_t ret = 0;
 	tn_protocol_compact_t *compact = (tn_protocol_compact_t *) self;
 	int8_t t;
 	bool boolNibble = compact->_nextBoolValue;
 	if( boolNibble == TNC_BOOLEAN_TRUE || boolNibble == TNC_BOOLEAN_FALSE )
 	{
-		*v = boolNibble == TNC_BOOLEAN_TRUE ? TRUE : FALSE;
+		*v = boolNibble == TNC_BOOLEAN_TRUE ? true : false;
 		compact->_nextBoolValue = TNC_STOP;
 	}
 	else
 	{
-		self->tn_read_byte(self, transport, &t);
-		*v = t == 0 ? FALSE : TRUE;
+		return_if_fail_or_inc(ret, self->tn_read_byte(self, transport, &t, error));
+		*v = t == 0 ? false : true;
 	}
-	return 1;
+	return ret;
 }
 
 tn_protocol_compact_t*
-tn_protocol_compact_init(tn_protocol_compact_t *cproto)
+tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
 {
 	tn_protocol_binary_t *binprotocol = (tn_protocol_binary_t*) cproto;
-	tn_protocol_binary_init(binprotocol);
+	tn_protocol_binary_init(binprotocol, error);
 	tn_protocol_t *protocol = (tn_protocol_t *) cproto;
+    protocol->block_container_io     = false;
 	protocol->tn_write_struct_begin  = &tn_protocol_compact_write_struct_begin;
 	protocol->tn_write_struct_end    = &tn_protocol_compact_write_struct_end;
 	protocol->tn_write_field_begin   = &tn_protocol_compact_write_field_begin;
@@ -831,7 +851,7 @@ tn_protocol_compact_init(tn_protocol_compact_t *cproto)
 
 	if( cproto->_lastFieldIdStack == NULL )
 	{
-		cproto->_lastFieldIdStack = tn_list_create(sizeof(int16_t), 2, 0);
+		cproto->_lastFieldIdStack = tn_list_create(sizeof(int16_t), 2, 0, error);
 	}
 	else
 	{
@@ -840,21 +860,21 @@ tn_protocol_compact_init(tn_protocol_compact_t *cproto)
 	return cproto;
 }
 tn_protocol_compact_t*
-tn_protocol_compact_create()
+tn_protocol_compact_create(tn_error_t *error)
 {
-	tn_protocol_compact_t *protocol = mowgli_alloc(sizeof(tn_protocol_compact_t));
-	if( protocol == NULL ) return NULL; 
+	tn_protocol_compact_t *protocol = tn_alloc(sizeof(tn_protocol_compact_t), error);
+	if( *error != 0 ) return NULL;
 	protocol->_lastFieldIdStack = NULL;
 	protocol->_lastFieldId = -1;
 	protocol->_nextBoolValue = -1;
-	tn_protocol_compact_init(protocol);
+	tn_protocol_compact_init(protocol, error);
 	return protocol;
 }
 void
 tn_protocol_compact_destroy(tn_protocol_compact_t* t)
 {
 	tn_list_destroy(t->_lastFieldIdStack);
-	mowgli_free(t);
+	tn_free(t);
 }
 
 

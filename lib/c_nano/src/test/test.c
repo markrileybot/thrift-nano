@@ -1,30 +1,37 @@
 
-#include <thrift_nano.h>
 #include <example_gen.h>
-#include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
 
-//#define CALLS 1000000
-#define CALLS 100
+#define CALLS 1000000
+//#define CALLS 100
 #define STRING1 "Heres some string data."
 #define STRING2 "  Here is some more data."
 
-#define run_test(func) printf("\nRun " #func "\n"); if( func() < 0 ) return -1;
+#define run_test(func, r, ...) \
+    printf("\nRun " #func "(" #__VA_ARGS__ ")\n"); \
+    r = func(__VA_ARGS__); \
+    if( r != 0 ) \
+    { \
+        printf("TEST FAILED(%d)!\n", r); \
+        return r; \
+    }
 
-tn_package_name_structa_t *structa;
-tn_package_name_structa_t *structa2;
-tn_transport_t *transport;
-tn_protocol_t *protocol;
-tn_protocol_t *protocol2;
+tn_package_name_structa_t *write_struct;
+tn_package_name_structa_t *read_struct;
+tn_transport_t *memory_transport;
+tn_protocol_t *compact_protocol;
+tn_protocol_t *binary_protocol;
 
 int
 test_map()
 {
+    tn_error_t error = T_ERR_OK;
 	tn_map_t *map;
 	printf("Test map start\n");
-	if((map = tn_map_create(sizeof(int32_t), sizeof(int32_t), T_I32, T_I32, CALLS*2)) == NULL)
+    map = tn_map_create(sizeof(int32_t), sizeof(int32_t), T_I32, T_I32, CALLS*2, &error);
+    if(error != 0)
 	{
-		printf("Failed to create map\n");
+		printf("Failed to create map.  %s.\n", tn_error_str(error));
 		return -1;
 	}
 
@@ -33,43 +40,43 @@ test_map()
 	v = max;
 	for( v = max, i = 0, v = max; i < max; i++, v-- )
 	{
-		tn_map_put(map, &i, &v);
+		tn_map_put(map, &i, &v, &error);
 	}
 	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->keys->elem_count);
+	printf("Map size is %d\n", map->kvs->elem_count);
 
 	for( i = 0, v = 0; i < max; i++, v++ )
 	{
-		tn_map_put(map, &i, &v);
+		tn_map_put(map, &i, &v, &error);
 	}
 	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->keys->elem_count);
+	printf("Map size is %d\n", map->kvs->elem_count);
 
 	struct timeval start, end;
 
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-		tn_map_put(map, &i, &i);
+		tn_map_put(map, &i, &i, &error);
 	}
 	gettimeofday(&end, NULL);
 	double total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	double pc = total/CALLS;
 	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->keys->elem_count);
+	printf("Map size is %d\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-		tn_map_put(map, &i, &i);
+		tn_map_put(map, &i, &i, &error);
 	}
 	gettimeofday(&end, NULL);
 	total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	pc = total/CALLS;
 	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->keys->elem_count);
+	printf("Map size is %d\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 	tn_map_elem_t *e;
@@ -85,7 +92,7 @@ test_map()
 	total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	pc = total/CALLS;
 	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->keys->elem_count);
+	printf("Map size is %d\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 
@@ -98,7 +105,7 @@ test_map()
 	total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	pc = total/CALLS;
 	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->keys->elem_count);
+	printf("Map size is %d\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 	tn_map_destroy(map);
@@ -109,10 +116,12 @@ int
 test_list()
 {
 	tn_list_t *list;
+    tn_error_t error = T_ERR_OK;
 	printf("Test list start\n");
-	if((list = tn_list_create(sizeof(int32_t), 3, T_I32)) == NULL)
+    list = tn_list_create(sizeof(int32_t), 3, T_I32, &error);
+	if(error != 0)
 	{
-		printf("Failed to create list\n");
+		printf("Failed to create list.  %s.\n", tn_error_str(error));
 		return -1;
 	}
 
@@ -121,7 +130,7 @@ test_list()
 	size_t max = 10;
 	for( i = 0; i < max; i++ )
 	{
-		v = tn_list_append(list);
+		v = tn_list_append(list, &error);
 		*v = i;
 	}
 
@@ -166,45 +175,54 @@ test_list()
 
 	tn_list_destroy(list);
 	printf("Test list complete\n");
+    return 0;
 }
 
 tn_package_name_structa_t* 
 create_structa()
 {
+    tn_error_t error = T_ERR_OK;
 	tn_package_name_structa_t *s;
-	if((s = tn_package_name_structa_create()) == NULL)
+    s = tn_package_name_structa_create(&error);
+	if(error != 0)
 	{
-		printf("Failed to create structa\n");
+		printf("Failed to create write_struct.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
-	if((s->structprop = tn_package_name_structb_create()) == NULL)
+    s->structprop = tn_package_name_structb_create(&error);
+	if(error != 0)
 	{
-		printf("Failed to create structb\n");
+		printf("Failed to create structb.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
-	if((s->structprop->strprop = tn_buffer_create(64)) == NULL)
+    s->structprop->strprop = tn_buffer_create(64, &error);
+	if(error != 0)
 	{
-		printf("Failed to create structb->str\n");
+		printf("Failed to create structb->str.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
-	if((s->structprop->v5 = tn_buffer_create(32)) == NULL)
+    s->structprop->v5 = tn_buffer_create(32, &error);
+	if(error != 0)
 	{
-		printf("Failed to create structb->v5\n");
+		printf("Failed to create structb->v5.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
-	if((s->strprop = tn_buffer_create(32)) == NULL )
+    s->strprop = tn_buffer_create(32, &error);
+	if(error != 0)
 	{
-		printf("Failed to create string\n");
+		printf("Failed to create string.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
-	if((s->listprop = tn_list_create(sizeof(int32_t), 10, T_I32)) == NULL )
+    s->listprop = tn_list_create(sizeof(int32_t), 10, T_I32, &error);
+	if(error != 0)
 	{
-		printf("Failed to create list\n");
+		printf("Failed to create list.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
-	if((s->mapprop = tn_map_create(sizeof(int16_t), sizeof(int16_t), T_I16, T_I16, 10)) == NULL)
+    s->mapprop = tn_map_create(sizeof(int16_t), sizeof(int16_t), T_I16, T_I16, 10, &error);
+	if(error != 0)
 	{
-		printf("Failed to create map\n");
+		printf("Failed to create map.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
 
@@ -219,13 +237,13 @@ create_structa()
 	size_t i;
 	for( i = 0; i < 20; i++ )
 	{
-		v = tn_list_append(s->listprop);
+		v = tn_list_append(s->listprop, &error);
 		*v = 20-i;
 	}
 
 	for( i = 0; i < 20; i++ )
 	{
-		tn_map_put(s->mapprop, &i, &i);
+		tn_map_put(s->mapprop, &i, &i, &error);
 	}
 	return s;
 }
@@ -233,26 +251,30 @@ create_structa()
 
 int test_init()
 {
+    tn_error_t error = T_ERR_OK;
 	tn_package_name_init();
 	
-	if((structa = create_structa()) == NULL)
+	if((write_struct = create_structa()) == NULL)
 	{
-		printf("Failed to create structa\n");
+		printf("Failed to create write_struct.  %s.\n", tn_error_str(error));
 		return -1;
 	}
-	if((protocol = (tn_protocol_t*)tn_protocol_compact_create()) == NULL)
+    compact_protocol = (tn_protocol_t*)tn_protocol_compact_create(&error);
+	if(error != 0)
 	{	
-		printf("Failed to create protocol\n");
+		printf("Failed to create compact_protocol.  %s.\n", tn_error_str(error));
 		return -1;
 	}
-	if((protocol2 = (tn_protocol_t*)tn_protocol_binary_create()) == NULL)
+    binary_protocol = (tn_protocol_t*)tn_protocol_binary_create(&error);
+	if(error != 0)
 	{	
-		printf("Failed to create protocol2\n");
+		printf("Failed to create binary_protocol.  %s.\n", tn_error_str(error));
 		return -1;
-	}	
-	if((transport = tn_transport_memory_create(10240)) == NULL)
+	}
+    memory_transport = tn_transport_memory_create(10240, &error);
+	if(error != 0)
 	{	
-		printf("Failed to create transport\n");
+		printf("Failed to create memory_transport.  %s.\n", tn_error_str(error));
 		return -1;
 	}
 	return 0;
@@ -260,41 +282,36 @@ int test_init()
 
 int test_fini()
 {
-	tn_package_name_structa_destroy(structa);
-	tn_transport_memory_destroy((tn_transport_memory_t*) transport);
-	tn_protocol_binary_destroy((tn_protocol_binary_t*) protocol);
-	tn_protocol_compact_destroy((tn_protocol_compact_t*) protocol2);
+	tn_package_name_structa_destroy(write_struct);
+	tn_transport_memory_destroy((tn_transport_memory_t*) memory_transport);
+	tn_protocol_binary_destroy((tn_protocol_binary_t*) binary_protocol);
+	tn_protocol_compact_destroy((tn_protocol_compact_t*) compact_protocol);
 	tn_package_name_fini();
 	return 0;
 }
 
-int test_write_abunch()
+int test_write_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_error_t *error)
 {
-	tn_transport_memory_t *t = (tn_transport_memory_t*) transport;
-	t->tn_reset(t);
-
 	size_t bytes, pos, i;
 	struct timeval start, end;
 
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-		bytes = tn_write_struct(structa, protocol, transport);
-		pos = t->buf->pos;
-		t->tn_reset(t);
+        transport->tn_reset(transport);
+		bytes = tn_write_struct(write_struct, protocol, transport, error);
 	}
+    pos = ((tn_transport_memory_t*)transport)->buf->pos;
 	gettimeofday(&end, NULL);
 	double total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	double pc = total/CALLS;
-	printf("%f/%d usecs/calls (%f usec/call) bytes=%d\n", total, CALLS, pc, pos);
-	return 0;
+	printf("%f/%d usecs/calls (%f usec/call) bytes=%d pos=%d\n", total, CALLS, pc, bytes, pos);
+    return pos - bytes;
 }
 
-int test_read_abunch()
+int test_read_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_error_t *error)
 {
-	tn_transport_memory_t *t = (tn_transport_memory_t*) transport;
-	t->tn_reset(t);
-	structa2 = tn_package_name_structa_create();
+	read_struct = tn_package_name_structa_create(error);
 
 	size_t bytes, pos, i;
 	struct timeval start, end;
@@ -302,56 +319,53 @@ int test_read_abunch()
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-		bytes = tn_read_struct(structa2, protocol, transport);
-		pos = t->buf->pos;
-		t->tn_reset(t);
+        transport->tn_reset(transport);
+        bytes = tn_read_struct(read_struct, protocol, transport, error);
 	}
+    pos = ((tn_transport_memory_t*)transport)->buf->pos;
 	gettimeofday(&end, NULL);
 	double total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	double pc = total/CALLS;
-	printf("%f/%d usecs/calls (%f usec/call) bytes=%d\n", total, CALLS, pc, pos);
+	printf("%f/%d usecs/calls (%f usec/call) bytes=%d pos=%d\n", total, CALLS, pc, bytes, pos);
 
-	printf("Test %s\n", structa2->strprop->buf);
-	printf("Test2 elem_count=%d\t[", structa2->listprop->elem_count);
+	printf("Test %s\n", read_struct->strprop->buf);
+	printf("Test2 elem_count=%d\t[", read_struct->listprop->elem_count);
 	int32_t *v;
-	size_t size = structa2->listprop->elem_count;
+	size_t size = read_struct->listprop->elem_count;
 	for( i = 0; i < size; i++ )
 	{
-		v = tn_list_get(structa2->listprop, i);
+		v = tn_list_get(read_struct->listprop, i);
 		printf(" %d = %d ", i, *v);
 	}
 	printf("]\n");
-	printf("Test3 elem_count=%d\t[", structa2->mapprop->keys->elem_count);
+	printf("Test3 elem_count=%d\t[", read_struct->mapprop->kvs->elem_count);
 	tn_map_elem_t *e;
-	size = structa2->mapprop->keys->elem_count;
+	size = read_struct->mapprop->kvs->elem_count;
 	for( i = 0; i < size; i++ )
 	{
-		e = tn_map_get(structa2->mapprop, i);
+		e = tn_map_get(read_struct->mapprop, i);
 		printf(" %d = %d ", *((int16_t*)e->key), *((int16_t*)e->value));
 	}
 	printf("]\n");
 
-	tn_package_name_structa_destroy(structa2);
-	return 0;
+	tn_package_name_structa_destroy(read_struct);
+	return pos - bytes;
 }
 
 int main(int argc, char** argv)
 {
-	run_test(test_init);
-	run_test(test_list);
-	run_test(test_map);
+    tn_error_t error = T_ERR_OK;
+    int res = 0;
+	run_test(test_init, res);
+	run_test(test_list, res);
+	run_test(test_map, res);
 
-	run_test(test_write_abunch);
-	run_test(test_read_abunch);
+	run_test(test_write_abunch, res, compact_protocol, memory_transport, &error);
+	run_test(test_read_abunch, res, compact_protocol, memory_transport, &error);
 
-	tn_protocol_t *tmp;	
-	tmp = protocol;
-	protocol = protocol2;
-	protocol2 = tmp;
-	
-	run_test(test_write_abunch);
-	run_test(test_read_abunch);
+	run_test(test_write_abunch, res, binary_protocol, memory_transport, &error);
+	run_test(test_read_abunch, res, binary_protocol, memory_transport, &error);
 
-	run_test(test_fini);
-	return 0;
+	run_test(test_fini, res);
+	return res;
 }

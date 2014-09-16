@@ -1,4 +1,12 @@
+/**
+ * Version stuff
+ */
+#define THRIFT_NANO_VERSION_MAJOR @THRIFT_NANO_VERSION_MAJOR@
+#define THRIFT_NANO_VERSION_MINOR @THRIFT_NANO_VERSION_MINOR@
+#define THRIFT_NANO_VERSION_PATCH @THRIFT_NANO_VERSION_PATCH@
 
-#define thrift-nano_VERSION_MAJOR @thrift-nano_VERSION_MAJOR@
-#define thrift-nano_VERSION_MINOR @thrift-nano_VERSION_MINOR@
-#define thrift-nano_VERSION_PATCH @thrift-nano_VERSION_PATCH@
+
+/**
+ * Configurable things
+ */
+#define THRIFT_ALLOC 1

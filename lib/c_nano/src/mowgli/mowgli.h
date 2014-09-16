@@ -11,6 +11,5 @@
 #include "mowgli/allocator.h"
 #include "mowgli/alloc.h"
 #include "mowgli/bootstrap.h"
-#include "mowgli/mowgli_string.h"
 
 #endif
