@@ -1,5 +1,4 @@
 
-#include <mowgli/mowgli.h>
 #include <thrift/protocol.h>
 #include <thrift/mem.h>
 #include <stdint.h>

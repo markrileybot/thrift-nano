@@ -1,5 +1,6 @@
 
 #include <config.h>
+#include <stdlib.h>
 #include <thrift/mem.h>
 
 static tn_allocator_t *alloc;
