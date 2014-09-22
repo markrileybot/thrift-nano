@@ -2,11 +2,8 @@
 
 // Here's what I think the generated code should look like:
 
-#include <example_gen.h>
+#include <test/example_gen.h>
 #include <thrift/mem.h>
-#include <thrift/types.h>
-#include <error.h>
-#include "example_gen.h"
 
 // struct b
 static size_t

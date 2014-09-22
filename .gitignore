@@ -33,3 +33,6 @@
 *.anjuta*
 *.idea
 *.iml
+
+# Generated source
+config.h

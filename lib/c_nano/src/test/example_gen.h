@@ -6,6 +6,10 @@
 // Here's what I think the generated code should look like:
 #include <thrift/thrift_nano.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 // struct b
 typedef struct
@@ -38,5 +42,9 @@ void tn_package_name_structa_destroy(tn_package_name_structa_t*);
 // package/library level init
 void tn_package_name_init();
 void tn_package_name_fini();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

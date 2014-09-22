@@ -25,7 +25,6 @@
 #define __MOWGLI_STDINC_H__
 
 #include <stddef.h>
-#include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>

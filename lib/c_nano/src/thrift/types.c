@@ -2,7 +2,6 @@
 #include <thrift/mem.h>
 #include <string.h>
 #include <mowgli/mowgli.h>
-#include "types.h"
 
 #define HASH_PRIME 37
 #define HASH_START 17
@@ -13,13 +12,13 @@
 const char*
 tn_error_str(tn_error_t t)
 {
-    printf("Error: %d\n", t);
     switch(t)
     {
         case T_ERR_ALLOC_FAILED:        return "ALLOC FAILED";
         case T_ERR_ALLOC_NOT_SUPPORTED: return "ALLOC NOT SUPPORTED";
         case T_ERR_BUFFER_OVERFLOW:     return "BUFFER OVERFLOW";
         case T_ERR_BUFFER_UNDERFLOW:    return "BUFFER UNDERFLOW";
+        case T_ERR_OK:					return "OK";
     }
     return "UNKNOWN ERROR";
 }

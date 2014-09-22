@@ -24,4 +24,13 @@ tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self, size_t buf
 tn_transport_t* tn_transport_memory_create(size_t bufferSize, tn_error_t *error);
 void tn_transport_memory_destroy(tn_transport_memory_t* self);
 
+typedef struct tn_transport_file_t
+{
+    tn_transport_t parent;
+    FILE *fd;
+} tn_transport_file_t;
+tn_transport_t* tn_transport_file_init(tn_transport_file_t *self, FILE *fd, tn_error_t *error);
+tn_transport_t* tn_transport_file_create(FILE *fd, tn_error_t *error);
+void tn_transport_file_destroy(tn_transport_file_t* self);
+
 #endif

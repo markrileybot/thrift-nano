@@ -102,4 +102,60 @@ tn_transport_memory_destroy(tn_transport_memory_t* t)
 
 
 
+static bool
+tn_transport_file_is_open(tn_transport_t *self)
+{
+    return true;
+}
+static size_t
+tn_transport_file_read(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
+{
+    tn_transport_file_t *file = (tn_transport_file_t*) self;
+    size_t l = fread(buf, 1, len, file->fd);
+    if( l != len ) *error = T_ERR_BUFFER_UNDERFLOW;
+    return l;
+}
+static size_t
+tn_transport_file_write(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
+{
+    tn_transport_file_t *file = (tn_transport_file_t*) self;
+    size_t l = fwrite(buf, 1, len, file->fd);
+    if( l != len ) *error = T_ERR_BUFFER_OVERFLOW;
+    return l;
+}
+static void
+tn_transport_file_reset(tn_transport_t *self)
+{
+}
+tn_transport_t *
+tn_transport_file_init(tn_transport_file_t *s, FILE *fd, tn_error_t *error)
+{
+    tn_transport_t *self = (tn_transport_t*) s;
+    self->tn_is_open = &tn_transport_file_is_open;
+    self->tn_read = &tn_transport_file_read;
+    self->tn_write = &tn_transport_file_write;
+    self->tn_reset = &tn_transport_file_reset;
+    s->fd = fd;
+    return self;
+}
+tn_transport_t*
+tn_transport_file_create(FILE *fd, tn_error_t *error)
+{
+    tn_transport_file_t *t = tn_alloc(sizeof(tn_transport_file_t), error);
+    if( *error != 0 ) return NULL;
+    return tn_transport_file_init(t, fd, error);
+}
+void
+tn_transport_file_destroy(tn_transport_file_t* t)
+{
+    if( t->fd != NULL )
+    {
+        fclose(t->fd);
+        t->fd = NULL;
+    }
+    tn_free(t);
+}
+
+
+
 

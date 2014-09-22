@@ -1,5 +1,5 @@
 
-#include <example_gen.h>
+#include <test/example_gen.h>
 #include <sys/time.h>
 
 #define CALLS 1000000
@@ -178,7 +178,7 @@ test_list()
     return 0;
 }
 
-tn_package_name_structa_t* 
+tn_package_name_structa_t*
 create_structa()
 {
     tn_error_t error = T_ERR_OK;
@@ -253,7 +253,7 @@ int test_init()
 {
     tn_error_t error = T_ERR_OK;
 	tn_package_name_init();
-	
+
 	if((write_struct = create_structa()) == NULL)
 	{
 		printf("Failed to create write_struct.  %s.\n", tn_error_str(error));
@@ -261,19 +261,19 @@ int test_init()
 	}
     compact_protocol = (tn_protocol_t*)tn_protocol_compact_create(&error);
 	if(error != 0)
-	{	
+	{
 		printf("Failed to create compact_protocol.  %s.\n", tn_error_str(error));
 		return -1;
 	}
     binary_protocol = (tn_protocol_t*)tn_protocol_binary_create(&error);
 	if(error != 0)
-	{	
+	{
 		printf("Failed to create binary_protocol.  %s.\n", tn_error_str(error));
 		return -1;
 	}
     memory_transport = tn_transport_memory_create(10240, &error);
 	if(error != 0)
-	{	
+	{
 		printf("Failed to create memory_transport.  %s.\n", tn_error_str(error));
 		return -1;
 	}

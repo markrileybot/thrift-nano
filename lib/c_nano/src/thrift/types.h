@@ -3,9 +3,10 @@
 #define __THRIFT_TYPES_H__
 
 #include <config.h>
-#include <sys/types.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
 typedef enum
 {
