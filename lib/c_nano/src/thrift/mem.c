@@ -1,7 +1,6 @@
 
 #include <config.h>
 #include <thrift/mem.h>
-#include <mowgli/mowgli.h>
 
 static tn_allocator_t *alloc;
 static tn_allocator_t malloc_allocator;
