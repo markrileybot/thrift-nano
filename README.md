@@ -10,10 +10,6 @@ I like thrift but it doesn't support small computers very well.  I need somethin
 
 The library should support including only those transports/protocols/services required at compile time.
 
-mowgli
-------
-Thrift-nano is using a subset of mowgli as a partial replacement for glib.  The entire mowgli library is not used as it isn't required.  We will be whittling the use of mowgli down to the bare essentials as we go.
-
 Roadmap
 =======
 1. Create a small thrift library that will support all thrift types and the binary and compact protocols.  These protocols should be compiled out by default and only included with -DTHRIFT_NANO_PROTOCOL_<BINARY|COMPACT>
