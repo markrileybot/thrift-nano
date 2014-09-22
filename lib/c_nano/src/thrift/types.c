@@ -1,7 +1,6 @@
 #include <thrift/types.h>
 #include <thrift/mem.h>
 #include <string.h>
-#include <mowgli/mowgli.h>
 
 #define HASH_PRIME 37
 #define HASH_START 17

@@ -8,6 +8,15 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/* Macros for min/max.  */
+#ifndef MIN
+# define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
+#ifndef MAX
+# define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+
 typedef enum
 {
     T_ERR_OK                        = 0,

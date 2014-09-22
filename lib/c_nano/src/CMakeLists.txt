@@ -2,16 +2,12 @@
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 
 set(SOURCES
-  mowgli/allocation_policy.c
-  mowgli/allocator.c
-  mowgli/alloc.c
-  mowgli/bootstrap.c
-  mowgli/logger.c
   thrift/mem.c
   thrift/types.c
 	thrift/protocol.c
 	thrift/struct.c
 	thrift/transport.c
+	thrift/init.c
 )
 
 set(TEST_SOURCES

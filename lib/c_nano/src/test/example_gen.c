@@ -135,7 +135,7 @@ tn_package_name_structb_destroy(tn_package_name_structb_t* self)
 {
 	tn_buffer_destroy(self->strprop);
 	tn_buffer_destroy(self->v5);
-	mowgli_free(self);
+	tn_free(self);
 }
 
 
@@ -385,7 +385,7 @@ tn_package_name_structa_destroy(tn_package_name_structa_t* self)
 	tn_list_destroy(self->listprop);
 	tn_map_destroy(self->mapprop);
 	tn_package_name_structb_destroy(self->structprop);
-	mowgli_free(self);
+	tn_free(self);
 }
 
 
@@ -393,12 +393,10 @@ tn_package_name_structa_destroy(tn_package_name_structa_t* self)
 void
 tn_package_name_init()
 {
-	//mowgli_bootstrap();
 }
 
 void
 tn_package_name_fini()
 {
-	mowgli_shutdown();
 }
 

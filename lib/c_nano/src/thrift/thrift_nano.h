@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 #include <config.h>
-#include <mowgli/mowgli.h>
+#include <thrift/init.h>
 #include <thrift/types.h>
 #include <thrift/transport.h>
 #include <thrift/protocol.h>
