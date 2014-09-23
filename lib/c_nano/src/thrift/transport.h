@@ -6,6 +6,7 @@
 
 typedef struct tn_transport_t
 {
+    tn_object_t parent;
 	bool (*tn_is_open)(struct tn_transport_t *self);
 	size_t (*tn_read)(struct tn_transport_t *self, void *buf, size_t len, tn_error_t *error);
 	size_t (*tn_write)(struct tn_transport_t *self, void *buf, size_t len, tn_error_t *error);
@@ -13,7 +14,6 @@ typedef struct tn_transport_t
 } tn_transport_t;
 tn_transport_t* tn_transport_init(tn_transport_t *self, tn_error_t *error);
 tn_transport_t* tn_transport_create(tn_error_t *error);
-void tn_transport_destroy(tn_transport_t* self);
 
 typedef struct tn_transport_memory_t
 {
@@ -22,7 +22,6 @@ typedef struct tn_transport_memory_t
 } tn_transport_memory_t;
 tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self, size_t bufferSize, tn_error_t *error);
 tn_transport_t* tn_transport_memory_create(size_t bufferSize, tn_error_t *error);
-void tn_transport_memory_destroy(tn_transport_memory_t* self);
 
 typedef struct tn_transport_file_t
 {
@@ -31,6 +30,5 @@ typedef struct tn_transport_file_t
 } tn_transport_file_t;
 tn_transport_t* tn_transport_file_init(tn_transport_file_t *self, FILE *fd, tn_error_t *error);
 tn_transport_t* tn_transport_file_create(FILE *fd, tn_error_t *error);
-void tn_transport_file_destroy(tn_transport_file_t* self);
 
 #endif

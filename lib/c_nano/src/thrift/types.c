@@ -23,9 +23,31 @@ tn_error_str(tn_error_t t)
 }
 
 
+void
+tn_object_destroy(void *t)
+{
+    tn_object_t *obj;
+    if( t != NULL )
+    {
+        obj = (tn_object_t*) t;
+        obj->tn_destroy(obj);
+    }
+}
+
+
+
+static void
+tn_list_destroy(tn_object_t *obj)
+{
+    tn_list_t *list = (tn_list_t*) obj;
+    tn_free(list->data);
+    tn_free(list);
+}
+
 tn_list_t* 
 tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn_type_t type, tn_error_t *error)
 {
+    list->parent.tn_destroy = &tn_list_destroy;
 	list->elem_size = elem_size;
 	list->elem_count = 0;
 	list->type = type;
@@ -33,7 +55,6 @@ tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn_type_t typ
     if( list->data == NULL )
 	{
         list->data = tn_alloc_array(list->elem_size, list->elem_cap, error);
-        if( *error == 0 ) list->growable = true;
 	}
 	return list;
 }
@@ -48,7 +69,6 @@ tn_list_create(size_t elem_size, size_t elem_count, tn_type_t type, tn_error_t *
 	list->elem_count = 0;
 	list->elem_cap = 0;
 	list->type = T_STOP;
-	list->growable = false;
 	return tn_list_init(list, elem_size, elem_count, type, error);
 }
 
@@ -69,16 +89,9 @@ tn_list_grow(tn_list_t *list, size_t atleast, tn_error_t *error)
 void
 tn_list_ensure_cap(tn_list_t *list, size_t count, tn_error_t *error)
 {
-    if( list->growable )
+    if( list->elem_cap - list->elem_count < count )
     {
-        if( list->elem_cap - list->elem_count < count )
-        {
-            tn_list_grow(list, count, error);
-        }
-    }
-    else
-    {
-        *error = T_ERR_BUFFER_OVERFLOW;
+        tn_list_grow(list, count, error);
     }
 }
 
@@ -125,14 +138,13 @@ tn_list_pop(tn_list_t *list)
 	return list->data + (list->elem_count * list->elem_size);
 }
 
-void 
-tn_list_destroy(tn_list_t *list)
+
+static void
+tn_buffer_destroy(tn_object_t *self)
 {
-	tn_free(list->data);
-	tn_free(list);
+    tn_free(((tn_buffer_t*)self)->buf);
+    tn_free(self);
 }
-
-
 void *
 tn_buffer_get(tn_buffer_t *mem, size_t len)
 {
@@ -144,7 +156,7 @@ tn_buffer_get(tn_buffer_t *mem, size_t len)
 size_t
 tn_buffer_ensure_cap(tn_buffer_t *mem, size_t len)
 {
-	if( mem->growable && mem->len - mem->pos <= len )
+	if( mem->len - mem->pos <= len )
 	{
         tn_error_t error = T_ERR_OK;
 		size_t nl = mem->pos + len + 1;
@@ -191,10 +203,10 @@ tn_buffer_reset(tn_buffer_t *self)
 tn_buffer_t *
 tn_buffer_init(tn_buffer_t *self, size_t bufferSize, tn_error_t *error)
 {
+    self->parent.tn_destroy = &tn_buffer_destroy;
 	if( self->buf == NULL )
 	{
 		self->buf = tn_alloc(bufferSize, error);
-		self->growable = true;
 	}
 	self->pos = 0;
 	self->len = bufferSize;
@@ -206,18 +218,19 @@ tn_buffer_create(size_t bufferSize, tn_error_t *error)
 	tn_buffer_t *t = tn_alloc(sizeof(tn_buffer_t), error);
     if( *error != 0 ) return NULL;
 	t->buf = NULL;
-	t->growable = false;
 	return tn_buffer_init(t, bufferSize, error);
 }
-void
-tn_buffer_destroy(tn_buffer_t *self)
+
+
+static void
+tn_map_destroy(tn_object_t *obj)
 {
-	tn_free(self->buf);
-	tn_free(self);
+    tn_map_t *map = (tn_map_t*) obj;
+    tn_object_destroy(map->elems);
+    tn_object_destroy(map->kvs);
+    tn_free(map->entries);
+    tn_free(map);
 }
-
-
-
 static int32_t
 tn_map_hash(tn_map_t *map, char *key)
 {
@@ -382,7 +395,8 @@ tn_map_put(tn_map_t *map, void *key, void *value, tn_error_t *error)
                 map->entries[h] = e;
             }
 
-            if (map->growable && map->kvs->elem_count >= map->entry_cap * .75f) {
+            if (map->kvs->elem_count >= map->entry_cap * .75f)
+            {
                 // double capacity if supported
                 tn_map_grow(map, error);
             }
@@ -436,6 +450,7 @@ tn_map_clear(tn_map_t *map)
 tn_map_t*
 tn_map_init(tn_map_t *map, size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count, tn_error_t *error)
 {
+    map->parent.tn_destroy = &tn_map_destroy;
 	map->entry_cap = elem_count;
     map->key_size = key_size;
     map->val_size = value_size;
@@ -448,7 +463,6 @@ tn_map_init(tn_map_t *map, size_t key_size, size_t value_size, tn_type_t key_typ
         if( *error == 0 )
         {
             memset(map->entries, 0, sizeof(tn_map_elem_t *) * elem_count);
-            map->growable = true;
         }
 	}
 	if( map->kvs == NULL )
@@ -471,16 +485,7 @@ tn_map_create(size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t 
 	map->entries = NULL;
 	map->elems = NULL;
 	map->kvs = NULL;
-	map->growable = false;
 	return tn_map_init(map, key_size, value_size, key_type, value_type, elem_count, error);//tn_map_topow2(elem_count));
-}
-void
-tn_map_destroy(tn_map_t *map)
-{
-    tn_free(map->entries);
-	tn_list_destroy(map->elems);
-	tn_list_destroy(map->kvs);
-	tn_free(map);
 }
 
 

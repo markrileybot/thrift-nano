@@ -115,11 +115,20 @@ tn_package_name_structb_read(void *data, tn_protocol_t *protocol, tn_transport_t
     return_if_fail_or_inc(ret, protocol->tn_read_struct_end(protocol, transport, error));
 	return ret;
 }
+static void
+tn_package_name_structb_destroy(tn_object_t *obj)
+{
+    tn_package_name_structb_t *self = (tn_package_name_structb_t*) obj;
+    tn_object_destroy(self->strprop);
+    tn_object_destroy(self->v5);
+    tn_free(self);
+}
 tn_package_name_structb_t*
 tn_package_name_structb_init(tn_package_name_structb_t *ret, tn_error_t *error)
 {
-	ret->parent.tn_write = tn_package_name_structb_write;
-	ret->parent.tn_read = tn_package_name_structb_read;
+    ret->parent.parent.tn_destroy = &tn_package_name_structb_destroy;
+	ret->parent.tn_write = &tn_package_name_structb_write;
+	ret->parent.tn_read = &tn_package_name_structb_read;
 	return ret;
 }
 tn_package_name_structb_t*
@@ -129,13 +138,6 @@ tn_package_name_structb_create(tn_error_t *error)
     if( *error != 0 ) return NULL;
 	ret->strprop = NULL;
 	return tn_package_name_structb_init(ret, error);
-}
-void
-tn_package_name_structb_destroy(tn_package_name_structb_t* self)
-{
-	tn_buffer_destroy(self->strprop);
-	tn_buffer_destroy(self->v5);
-	tn_free(self);
 }
 
 
@@ -161,7 +163,7 @@ tn_package_name_structa_write(void *data, tn_protocol_t *protocol, tn_transport_
 	if( s->structprop != NULL )
 	{
         return_if_fail_or_inc(ret, protocol->tn_write_field_begin(protocol, transport, "structprop", T_STRUCT, 2, error));
-        return_if_fail_or_inc(ret, tn_write_struct(s->structprop, protocol, transport, error));
+        return_if_fail_or_inc(ret, tn_struct_write(s->structprop, protocol, transport, error));
         return_if_fail_or_inc(ret, protocol->tn_write_field_end(protocol, transport, error));
 	}
 	if( s->listprop != NULL )
@@ -255,7 +257,7 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 				if( type == T_STRUCT )
 				{
 					if( self->structprop == NULL ) self->structprop = tn_package_name_structb_create(error);
-                    return_if_fail_or_inc(ret, tn_read_struct(self->structprop, protocol, transport, error));
+                    return_if_fail_or_inc(ret, tn_struct_read(self->structprop, protocol, transport, error));
 				}
 				else
 				{
@@ -348,6 +350,16 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
     return_if_fail_or_inc(ret, protocol->tn_read_struct_end(protocol, transport, error));
 	return ret;
 }
+static void
+tn_package_name_structa_destroy(tn_object_t *obj)
+{
+    tn_package_name_structa_t *self = (tn_package_name_structa_t*) obj;
+    tn_object_destroy(self->strprop);
+    tn_object_destroy(self->listprop);
+    tn_object_destroy(self->mapprop);
+    tn_object_destroy(self->structprop);
+    tn_free(self);
+}
 tn_package_name_structa_t*
 tn_package_name_structa_init(tn_package_name_structa_t *ret, tn_error_t *error)
 {
@@ -363,8 +375,9 @@ tn_package_name_structa_init(tn_package_name_structa_t *ret, tn_error_t *error)
 		// clear out the map
 		tn_map_clear(ret->mapprop);
 	}
-	ret->parent.tn_write = tn_package_name_structa_write;
-	ret->parent.tn_read = tn_package_name_structa_read;
+    ret->parent.parent.tn_destroy = &tn_package_name_structa_destroy;
+	ret->parent.tn_write = &tn_package_name_structa_write;
+	ret->parent.tn_read = &tn_package_name_structa_read;
 	return ret;
 }
 tn_package_name_structa_t*
@@ -377,15 +390,6 @@ tn_package_name_structa_create(tn_error_t *error)
 	ret->listprop = NULL;
 	ret->mapprop = NULL;
 	return tn_package_name_structa_init(ret, error);
-}
-void
-tn_package_name_structa_destroy(tn_package_name_structa_t* self)
-{
-	tn_buffer_destroy(self->strprop);
-	tn_list_destroy(self->listprop);
-	tn_map_destroy(self->mapprop);
-	tn_package_name_structb_destroy(self->structprop);
-	tn_free(self);
 }
 
 

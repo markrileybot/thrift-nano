@@ -91,12 +91,13 @@ static size_t tn_protocol_read_int64            (tn_protocol_t *self, tn_transpo
 static size_t tn_protocol_read_byte             (tn_protocol_t *self, tn_transport_t *transport, int8_t *v, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_double           (tn_protocol_t *self, tn_transport_t *transport, double *v, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_bool             (tn_protocol_t *self, tn_transport_t *transport, bool *v, tn_error_t *error) {return 0;}
-
+static void tn_protocol_destroy(tn_object_t* t) { tn_free(t); }
 tn_protocol_t*
 tn_protocol_init(tn_protocol_t *protocol, tn_error_t *error)
 {
     protocol->block_container_io     = false;
-	protocol->tn_write_field_begin   = &tn_protocol_write_field_begin;
+    protocol->parent.tn_destroy      = &tn_protocol_destroy;
+    protocol->tn_write_field_begin   = &tn_protocol_write_field_begin;
 	protocol->tn_write_field_end     = &tn_protocol_write_field_end;
 	protocol->tn_write_field_stop    = &tn_protocol_write_field_stop;
 	protocol->tn_write_struct_begin  = &tn_protocol_write_struct_begin;
@@ -147,11 +148,6 @@ tn_protocol_create(tn_error_t *error)
 	tn_protocol_t *protocol = tn_alloc(sizeof(tn_protocol_t), error);
 	if( *error != 0 ) return NULL;
     return tn_protocol_init(protocol, error);
-}
-void
-tn_protocol_destroy(tn_protocol_t* t)
-{
-	tn_free(t);
 }
 
 
@@ -363,11 +359,6 @@ tn_protocol_binary_create(tn_error_t *error)
 	tn_protocol_binary_t *protocol = tn_alloc(sizeof(tn_protocol_binary_t), error);
     if( *error != 0 ) return NULL;
 	return tn_protocol_binary_init(protocol, error);
-}
-void
-tn_protocol_binary_destroy(tn_protocol_binary_t* t)
-{
-	tn_free(t);
 }
 
 
@@ -817,7 +808,13 @@ tn_protocol_compact_read_bool(tn_protocol_t *self, tn_transport_t *transport, bo
 	}
 	return ret;
 }
-
+static void
+tn_protocol_compact_destroy(tn_object_t* t)
+{
+    tn_protocol_compact_t *self = (tn_protocol_compact_t*) t;
+    tn_object_destroy(self->_lastFieldIdStack);
+    tn_free(t);
+}
 tn_protocol_compact_t*
 tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
 {
@@ -825,6 +822,7 @@ tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
 	tn_protocol_binary_init(binprotocol, error);
 	tn_protocol_t *protocol = (tn_protocol_t *) cproto;
     protocol->block_container_io     = false;
+    protocol->parent.tn_destroy      = &tn_protocol_compact_destroy;
 	protocol->tn_write_struct_begin  = &tn_protocol_compact_write_struct_begin;
 	protocol->tn_write_struct_end    = &tn_protocol_compact_write_struct_end;
 	protocol->tn_write_field_begin   = &tn_protocol_compact_write_field_begin;
@@ -868,12 +866,6 @@ tn_protocol_compact_create(tn_error_t *error)
 	protocol->_nextBoolValue = -1;
 	tn_protocol_compact_init(protocol, error);
 	return protocol;
-}
-void
-tn_protocol_compact_destroy(tn_protocol_compact_t* t)
-{
-	tn_list_destroy(t->_lastFieldIdStack);
-	tn_free(t);
 }
 
 

@@ -11,6 +11,7 @@
 
 typedef struct tn_protocol_t
 {
+    tn_object_t parent;
 
     // settings
     bool block_container_io;
@@ -72,7 +73,6 @@ typedef struct tn_protocol_t
 } tn_protocol_t;
 tn_protocol_t* tn_protocol_init(tn_protocol_t *protocol, tn_error_t *error);
 tn_protocol_t* tn_protocol_create(tn_error_t *error);
-void tn_protocol_destroy(tn_protocol_t*);
 
 
 
@@ -83,7 +83,6 @@ typedef struct tn_protocol_binary_t
 } tn_protocol_binary_t;
 tn_protocol_binary_t* tn_protocol_binary_init(tn_protocol_binary_t *protocol, tn_error_t *error);
 tn_protocol_binary_t* tn_protocol_binary_create(tn_error_t *error);
-void tn_protocol_binary_destroy(tn_protocol_binary_t*);
 
 
 // compact protocol
@@ -99,6 +98,5 @@ typedef struct tn_protocol_compact_t
 } tn_protocol_compact_t;
 tn_protocol_compact_t* tn_protocol_compact_init(tn_protocol_compact_t *protocol, tn_error_t *error);
 tn_protocol_compact_t* tn_protocol_compact_create(tn_error_t *error);
-void tn_protocol_compact_destroy(tn_protocol_compact_t*);
 
 #endif

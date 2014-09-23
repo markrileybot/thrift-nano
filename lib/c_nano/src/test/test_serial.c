@@ -134,9 +134,9 @@ serial_test_init(char *file)
 int
 serial_test_fini()
 {
-	tn_package_name_structa_destroy(write_struct);
-    tn_transport_file_destroy((tn_transport_file_t*) file_transport);
-	tn_protocol_compact_destroy((tn_protocol_compact_t*) compact_protocol);
+	tn_object_destroy(write_struct);
+    tn_object_destroy(file_transport);
+    tn_object_destroy(compact_protocol);
 	tn_package_name_fini();
 	return 0;
 }
@@ -157,7 +157,7 @@ int main(int argc, char** argv)
     int res = 0;
     serial_test_init(argv[1]);
 
-    size_t bytes = tn_write_struct(write_struct, compact_protocol, file_transport, &error);
+    size_t bytes = tn_struct_write(write_struct, compact_protocol, file_transport, &error);
     if( error != T_ERR_OK ) printf("Error %s\n", tn_error_str(error));
     printf("Wrote %d bytes\n", bytes);
 

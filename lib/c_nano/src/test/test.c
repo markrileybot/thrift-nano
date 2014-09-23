@@ -108,7 +108,7 @@ test_map()
 	printf("Map size is %d\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
-	tn_map_destroy(map);
+    tn_object_destroy(map);
 	return 0;
 }
 
@@ -173,7 +173,7 @@ test_list()
 		printf("Item at %d is %d\n", i, *v);
 	}
 
-	tn_list_destroy(list);
+    tn_object_destroy(list);
 	printf("Test list complete\n");
     return 0;
 }
@@ -282,10 +282,10 @@ int test_init()
 
 int test_fini()
 {
-	tn_package_name_structa_destroy(write_struct);
-	tn_transport_memory_destroy((tn_transport_memory_t*) memory_transport);
-	tn_protocol_binary_destroy((tn_protocol_binary_t*) binary_protocol);
-	tn_protocol_compact_destroy((tn_protocol_compact_t*) compact_protocol);
+	tn_object_destroy(write_struct);
+    tn_object_destroy(memory_transport);
+    tn_object_destroy(binary_protocol);
+    tn_object_destroy(compact_protocol);
 	tn_package_name_fini();
 	return 0;
 }
@@ -299,7 +299,7 @@ int test_write_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_err
 	for( i = 0; i < CALLS; i++ )
 	{
         transport->tn_reset(transport);
-		bytes = tn_write_struct(write_struct, protocol, transport, error);
+		bytes = tn_struct_write(write_struct, protocol, transport, error);
 	}
     pos = ((tn_transport_memory_t*)transport)->buf->pos;
 	gettimeofday(&end, NULL);
@@ -320,7 +320,7 @@ int test_read_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_erro
 	for( i = 0; i < CALLS; i++ )
 	{
         transport->tn_reset(transport);
-        bytes = tn_read_struct(read_struct, protocol, transport, error);
+        bytes = tn_struct_read(read_struct, protocol, transport, error);
 	}
     pos = ((tn_transport_memory_t*)transport)->buf->pos;
 	gettimeofday(&end, NULL);
@@ -348,7 +348,7 @@ int test_read_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_erro
 	}
 	printf("]\n");
 
-	tn_package_name_structa_destroy(read_struct);
+    tn_object_destroy(read_struct);
 	return pos - bytes;
 }
 
