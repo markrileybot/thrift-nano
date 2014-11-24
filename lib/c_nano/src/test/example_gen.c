@@ -247,10 +247,11 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 						tn_buffer_reset(self->strprop);
                         return_if_fail_or_inc(ret, protocol->tn_read_string(protocol, transport, self->strprop, size, error));
 					}
+                    return_if_fail_or_inc(ret, protocol->tn_read_string_end(protocol, transport, error));
 				}
 				else
 				{
-					// TODO: skip field
+                    return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, type, error));
 				}
 				break;
 			case 2:
@@ -261,6 +262,7 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 				}
 				else
 				{
+                    return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, type, error));
 				}
 				break;
 			case 3:
@@ -297,10 +299,16 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 					}
 					else
 					{
+                        for (i = 0; i < size; i++)
+                        {
+                            return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, type, error));
+                        }
 					}
+                    return_if_fail_or_inc(ret, protocol->tn_read_list_end(protocol, transport, error));
 				}
 				else
 				{
+                    return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, type, error));
 				}
 				break;
 			case 4:
@@ -338,12 +346,24 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
                             }
 						}
 					}
+                    else
+                    {
+                        for (i = 0; i < size; i++)
+                        {
+                            return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, type, error));
+                            return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, vtype, error));
+                        }
+                    }
+                    return_if_fail_or_inc(ret, protocol->tn_read_map_end(protocol, transport, error));
 				}
-				break;
-			default:
-                printf("Read fail?  unknown field %d\n", fieldId);
-			//default:
-				//TODO: skip field
+                else
+                {
+                    return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, type, error));
+                }
+                break;
+            default:
+                return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, type, error));
+                break;
 		}
         return_if_fail_or_inc(ret, protocol->tn_read_field_end(protocol, transport, error));
 	}

@@ -195,6 +195,13 @@ tn_buffer_write(tn_buffer_t *mem, void *buf, size_t len)
 	mem->pos += len;
     return len;
 }
+size_t
+tn_buffer_skip(tn_buffer_t *mem, size_t len)
+{
+    len = MIN(len, mem->len - mem->pos);
+    mem->pos += len;
+    return len;
+}
 void
 tn_buffer_reset(tn_buffer_t *self)
 {

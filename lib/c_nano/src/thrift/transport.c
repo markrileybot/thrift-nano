@@ -3,6 +3,8 @@
 #include <thrift/transport.h>
 #include <thrift/mem.h>
 
+const static int TN_FT_MAX_CHUNK_SIZE = 256;
+
 static void
 tn_transport_destroy(tn_object_t *t)
 {
@@ -68,6 +70,14 @@ tn_transport_memory_write(tn_transport_t *self, void *buf, size_t len, tn_error_
     if( l != len ) *error = T_ERR_BUFFER_OVERFLOW;
     return l;
 }
+static size_t
+tn_transport_memory_skip(tn_transport_t *self, size_t len, tn_error_t *error)
+{
+    tn_transport_memory_t *mem = (tn_transport_memory_t*) self;
+    size_t l = tn_buffer_skip(mem->buf, len);
+    if( l != len ) *error = T_ERR_BUFFER_OVERFLOW;
+    return l;
+}
 static void
 tn_transport_memory_reset(tn_transport_t *self)
 {
@@ -81,6 +91,7 @@ tn_transport_memory_init(tn_transport_memory_t *s, size_t bufferSize, tn_error_t
     self->parent.tn_destroy = &tn_transport_memory_destroy;
 	self->tn_read = &tn_transport_memory_read;
 	self->tn_write = &tn_transport_memory_write;
+    self->tn_skip = &tn_transport_memory_skip;
     self->tn_reset = &tn_transport_memory_reset;
 	if( s->buf == NULL )
 	{
@@ -124,6 +135,29 @@ tn_transport_file_write(tn_transport_t *self, void *buf, size_t len, tn_error_t 
     if( l != len ) *error = T_ERR_BUFFER_OVERFLOW;
     return l;
 }
+static size_t
+tn_transport_file_skip(tn_transport_t *self, size_t len, tn_error_t *error)
+{
+    tn_transport_file_t *file = (tn_transport_file_t*) self;
+    if( !fseek(file->fd, len, SEEK_CUR) )
+    {
+        return len;
+    }
+
+    // fd might not support seek...try to read chunks
+    const char cbuf[TN_FT_MAX_CHUNK_SIZE];
+    void *buf = (void*) &cbuf;
+    size_t total = 0;
+    while( (total += tn_transport_file_read(self, buf, MIN(total-len, TN_FT_MAX_CHUNK_SIZE), error)) < len )
+    {
+        if( *error != 0 )
+        {
+            break;
+        }
+    }
+
+    return total;
+}
 tn_transport_t *
 tn_transport_file_init(tn_transport_file_t *s, FILE *fd, tn_error_t *error)
 {
@@ -132,6 +166,7 @@ tn_transport_file_init(tn_transport_file_t *s, FILE *fd, tn_error_t *error)
     self->parent.tn_destroy = &tn_transport_file_destroy;
     self->tn_read = &tn_transport_file_read;
     self->tn_write = &tn_transport_file_write;
+    self->tn_skip = &tn_transport_file_skip;
     s->fd = fd;
     return self;
 }

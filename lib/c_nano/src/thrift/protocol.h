@@ -99,4 +99,9 @@ typedef struct tn_protocol_compact_t
 tn_protocol_compact_t* tn_protocol_compact_init(tn_protocol_compact_t *protocol, tn_error_t *error);
 tn_protocol_compact_t* tn_protocol_compact_create(tn_error_t *error);
 
+
+// utilities
+size_t
+tn_protocol_skip(tn_protocol_t *self, tn_transport_t *transport, tn_type_t type, tn_error_t *error);
+
 #endif
