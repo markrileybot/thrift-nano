@@ -69,8 +69,7 @@ typedef enum
 
 /**
  * Base type for all things.  This has methods and properties common to
- * all types in tn.  Right now we just have tn_destroy but we may have
- * things like refcounter in the future
+ * all types in tn.  Basically, just holds a common destructor.
  */
 typedef struct tn_object_t
 {
