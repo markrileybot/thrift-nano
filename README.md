@@ -25,3 +25,8 @@ Building
 
 >`mkdir build && cd build && cmake ../ && make`
 
+Examples
+========
+Example arduino serial reader: https://github.com/markrileybot/thrift-nano/wiki/Example-Arduino-Serial-Reader
+
+
