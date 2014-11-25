@@ -1,6 +1,7 @@
 #include <thrift/types.h>
 #include <thrift/mem.h>
 #include <string.h>
+#include "types.h"
 
 #define HASH_PRIME 37
 #define HASH_START 17
@@ -241,31 +242,59 @@ tn_map_destroy(tn_object_t *obj)
 static int32_t
 tn_map_hash(tn_map_t *map, char *key)
 {
+    tn_buffer_t *k;
+    char *buf;
 	size_t i, len = 0;
 	int32_t hash = HASH_START;
-	switch(map->key_size)
-	{
-	case 8:
-		hash = (int32_t) (*((int64_t*)key) ^ (*((int64_t*)key) >> 32)); break;
-	case 4:
-		hash = (int32_t) *((int32_t*)key); break;
-	case 2:
-		hash = (int32_t) *((int16_t*)key); break;
-	case 1:
-		hash = (int32_t) *((int8_t*)key); break;
-	default:
-		for( i = 0; i < len; i++ ) hash ^= key[i] * HASH_PRIME;
-	}
+    switch(map->key_type)
+    {
+        case T_STRING:
+        case T_UTF8:
+        case T_UTF16:
+            k = (tn_buffer_t*) key;
+            len = k->pos;
+            buf = k->buf;
+            for( i = 0; i < len; i++ ) hash ^= buf[i] * HASH_PRIME;
+        default:
+            switch (map->key_size)
+            {
+                case 8:
+                    hash = (int32_t) (*((int64_t *) key) ^ (*((int64_t *) key) >> 32));
+                    break;
+                case 4:
+                    hash = (int32_t) *((int32_t *) key);
+                    break;
+                case 2:
+                    hash = (int32_t) *((int16_t *) key);
+                    break;
+                case 1:
+                    hash = (int32_t) *((int8_t *) key);
+                    break;
+            }
+            break;
+    }
 	//TODO: % is about 2x slower on my laptop than & (which makes sense).
 	// however, using & requires map->entry_cap to be a 2^k to ensure a
 	// good distribution.  I like the % version better because its simpler
 	// so we'll stick with that until I test on a small computer
 	// return HASH2(hash) & (map->entry_cap - 1);
-	return hash % map->entry_cap;
+	return hash % (int32_t)map->entry_cap;
 }
 static bool
 tn_map_eq(tn_map_t *map, void *key0, void *key1)
 {
+    tn_buffer_t *k0, *k1;
+    size_t len = 0;
+    switch(map->key_type)
+    {
+        case T_STRING:
+        case T_UTF8:
+        case T_UTF16:
+            k0 = (tn_buffer_t *) key0;
+            k1 = (tn_buffer_t *) key0;
+            len = MIN(k0->pos, k1->pos);
+            return memcmp(k0->buf, k1->buf, len) == 0 ? true : false;
+    }
 	return memcmp(key0, key1, map->key_size) == 0 ? true : false;
 }
 //static size_t

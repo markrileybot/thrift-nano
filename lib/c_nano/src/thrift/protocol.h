@@ -9,6 +9,10 @@
     ret += call; \
     if( *error != 0 ) return ret;
 
+#define return_if_fail(ret, call) \
+    call; \
+    if( *error != 0 ) return ret;
+
 typedef struct tn_protocol_t
 {
     tn_object_t parent;
