@@ -1,7 +1,6 @@
 
 #include <thrift/protocol.h>
 #include <thrift/mem.h>
-#include <stdint.h>
 
 
 //==========================================================================
@@ -150,7 +149,7 @@ tn_protocol_create(tn_error_t *error)
     return tn_protocol_init(protocol, error);
 }
 
-
+#ifdef THRIFT_PROTOCOL_BINARY
 //==========================================================================
 //
 //  Binary protocol
@@ -364,7 +363,7 @@ tn_protocol_binary_create(tn_error_t *error)
 
 
 
-
+#ifdef THRIFT_PROTOCOL_COMPACT
 //==========================================================================
 //
 //  Compact protocol
@@ -867,6 +866,8 @@ tn_protocol_compact_create(tn_error_t *error)
     tn_protocol_compact_init(protocol, error);
     return protocol;
 }
+#endif
+#endif
 
 
 size_t

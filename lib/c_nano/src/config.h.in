@@ -1,3 +1,7 @@
+
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
+
 /**
  * Version stuff
  */
@@ -10,3 +14,8 @@
  * Configurable things
  */
 #define THRIFT_ALLOC 1
+#define THRIFT_PROTOCOL_BINARY 1
+#define THRIFT_PROTOCOL_COMPACT 1
+
+
+#endif /* __CONFIG_H__ */
