@@ -27,6 +27,7 @@
 #include <vector>
 
 #include <ctype.h>
+#include <stdio.h>
 
 #include "platform.h"
 #include "t_oop_generator.h"
@@ -40,10 +41,66 @@ using std::vector;
 
 static const string endl = "\n";  // avoid ostream << std::endl flushes
 
+
+/***************************************
+* UTILITY FUNCTIONS                   *
+***************************************/
+
+/**
+* Upper case a string.  Wraps boost's string utility.
+*/
+static string tn_to_upper_case(string name) {
+    string s (name);
+    std::transform (s.begin(), s.end(), s.begin(), ::toupper);
+    return s;
+    //  return boost::to_upper_copy (name);
+}
+
+/**
+* Lower case a string.  Wraps boost's string utility.
+*/
+static string tn_to_lower_case(string name) {
+    string s (name);
+    std::transform (s.begin(), s.end(), s.begin(), ::tolower);
+    return s;
+    //  return boost::to_lower_copy (name);
+}
+
+/**
+* Makes a string friendly to C code standards by lowercasing and adding
+* underscores, with the exception of the first character.  For example:
+*
+* Input: "ZomgCamelCase"
+* Output: "zomg_camel_case"
+*/
+static string tn_initial_caps_to_underscores(string name) {
+    string ret;
+    const char *tmp = name.c_str();
+    int pos = 0;
+
+    /* the first character isn't underscored if uppercase, just lowercased */
+    ret += tolower (tmp[pos]);
+    pos++;
+    for (unsigned int i = pos; i < name.length(); i++) {
+        char lc = tolower (tmp[i]);
+        if (lc != tmp[i]) {
+            ret += '_';
+        }
+        ret += lc;
+    }
+
+    return ret;
+}
+
+static string tn_type_prefix(string name, string nspace_lc) {
+    return nspace_lc + tn_initial_caps_to_underscores(name);
+}
+
+static string tn_type_name(string name, string nspace_lc) {
+    return tn_type_prefix(name, nspace_lc) + "_t";
+}
+
 /* forward declarations */
-string tn_initial_caps_to_underscores(string name);
-string tn_to_upper_case(string name);
-string tn_to_lower_case(string name);
 
 /**
  * C code generator, using glib for C typing.
@@ -140,27 +197,17 @@ private:
 	void generate_object(t_struct *tstruct);
 	void generate_struct_writer(ofstream &out, t_struct *tstruct, string this_name, string this_get="", bool is_function=true);
 	void generate_struct_reader(ofstream &out, t_struct *tstruct, string this_name, string this_get="", bool is_function=true);
+	void generate_struct_destructor(t_struct *tstruct, string type_prefix, string type_name_t);
+	void generate_struct_init(t_struct *tstruct, string type_prefix, string type_name_t);
+	void generate_struct_create(t_struct *tstruct, string type_prefix, string type_name_t);
 
-	void generate_serialize_field(ofstream &out, t_field *tfield, string prefix, string suffix, int error_ret);
-	void generate_serialize_struct(ofstream &out, t_struct *tstruct, string prefix, int error_ret);
-	void generate_serialize_container(ofstream &out, t_type *ttype, string prefix, int error_ret);
-	void generate_serialize_map_element(ofstream &out, t_map *tmap, string key, string value, int error_ret);
-	void generate_serialize_set_element(ofstream &out, t_set *tset, string element, int error_ret);
-	void generate_serialize_list_element(ofstream &out, t_list *tlist, string list, string index, int error_ret);
+	void generate_serialize_field(ofstream &out, t_field *tfield, string prefix, string suffix);
+	void generate_serialize_struct(ofstream &out, t_struct *tstruct, string prefix);
+	void generate_serialize_container(ofstream &out, t_type *ttype, string prefix);
 
-	void generate_deserialize_field(ofstream &out, t_field *tfield, string prefix, string suffix, int error_ret, bool allocate=true);
-	void generate_deserialize_struct(ofstream &out, t_struct *tstruct, string prefix, int error_ret, bool allocate=true);
-	void generate_deserialize_container(ofstream &out, t_type *ttype, string prefix, int error_ret);
-	void generate_deserialize_map_element(ofstream &out, t_map *tmap, string prefix, int error_ret);
-	void generate_deserialize_set_element(ofstream &out, t_set *tset, string prefix, int error_ret);
-	void generate_deserialize_list_element(ofstream &out, t_list *tlist, string prefix, string index, int error_ret);
-
-	string generate_new_hash_from_type(t_type * key, t_type * value);
-	string generate_new_array_from_type(t_type * ttype);
-
-	string generate_free_func_from_type(t_type * ttype);
-	string generate_hash_func_from_type(t_type * ttype);
-	string generate_cmp_func_from_type(t_type * ttype);
+	void generate_deserialize_field(ofstream &out, t_field *tfield, string prefix="", string suffix="", bool is_ptr=false, bool allocate=true);
+	void generate_deserialize_struct(ofstream &out, t_struct *tstruct, string prefix, bool allocate=true);
+	void generate_deserialize_container(ofstream &out, t_type *ttype, string prefix);
 };
 
 /**
@@ -192,7 +239,7 @@ void t_c_nano_generator::init_generator() {
 			endl;
 
 	/* include base types */
-	f_types_ << "/* base includes */" << endl << "#include <thrift_nano.h>" << endl;
+	f_types_ << "/* base includes */" << endl << "#include <thrift/thrift_nano.h>" << endl;
 
 	/* include other thrift includes */
 	const vector<t_program *> &includes = program_->get_includes();
@@ -496,11 +543,8 @@ string t_c_nano_generator::type_name (t_type* ttype, bool in_typedef, bool is_co
 		if (tcontainer->has_cpp_name()) {
 			cname = tcontainer->get_cpp_name();
 		} else if (ttype->is_map()) {
-			cname = "mowgli_dictionary_t *";
+			cname = "tn_map_t *";
 		} else if (ttype->is_set()) {
-			// since a set requires unique elements, use a GHashTable, and
-			// populate the keys and values with the same data, using keys for
-			// the actual writes and reads.
 			cname = "tn_list_t *";
 		} else if (ttype->is_list()) {
 			cname = "tn_list_t *";
@@ -532,8 +576,7 @@ string t_c_nano_generator::type_name (t_type* ttype, bool in_typedef, bool is_co
 	}
 
 	// check for a namespace
-	string pname = this->nspace + ttype->get_name();
-
+    string pname = tn_type_name(ttype->get_name(), this->nspace_lc);
 	if (is_complex_type (ttype)) {
 		pname += " *";
 	}
@@ -555,11 +598,7 @@ string t_c_nano_generator::base_type_name(t_base_type *type) {
 	case t_base_type::TYPE_VOID:
 		return "void";
 	case t_base_type::TYPE_STRING:
-		if (type->is_binary()) {
-			return "tn_buffer_t *";
-		} else {
-			return "mowgli_string_t *";
-		}
+        return "tn_buffer_t *";
 	case t_base_type::TYPE_BOOL:
 		return "bool";
 	case t_base_type::TYPE_BYTE:
@@ -806,194 +845,6 @@ string t_c_nano_generator::declare_field(t_field *tfield,
  * Generates C code that initializes complex constants.
  */
 void t_c_nano_generator::generate_const_initializer(string name, t_type *type, t_const_value *value) {
-	string name_u = tn_initial_caps_to_underscores(name);
-	string name_lc = tn_to_lower_case(name_u);
-	string type_u = tn_initial_caps_to_underscores(type->get_name());
-	string type_uc = tn_to_upper_case(type_u);
-
-	if (type->is_struct() || type->is_xception()) {
-		const vector<t_field *> &fields = ((t_struct *) type)->get_members();
-		vector<t_field *>::const_iterator f_iter;
-		const map<t_const_value *, t_const_value *> &val = value->get_map();
-		map<t_const_value *, t_const_value *>::const_iterator v_iter;
-		ostringstream initializers;
-
-		// initialize any constants that may be referenced by this initializer
-		for (v_iter = val.begin(); v_iter != val.end(); ++v_iter) {
-			t_type *field_type = NULL;
-			string field_name = "";
-
-			for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-				if ((*f_iter)->get_name() == v_iter->first->get_string()) {
-					field_type = (*f_iter)->get_type();
-					field_name = (*f_iter)->get_name();
-				}
-			}
-			if (field_type == NULL) {
-				throw "type error: " + type->get_name() + " has no field "
-						+ v_iter->first->get_string();
-			}
-			field_name = tmp (field_name);
-
-			generate_const_initializer (name + "_constant_" + field_name,
-					field_type, v_iter->second);
-			initializers <<
-					"    constant->" << v_iter->first->get_string() << " = " <<
-					constant_value (name + "_constant_" + field_name,
-							field_type, v_iter->second) << ";" << endl <<
-							"    constant->__isset_" << v_iter->first->get_string() <<
-							" = TRUE;" << endl;
-		}
-
-		// implement the initializer
-		f_types_impl_ <<
-				"static " << this->nspace << type->get_name() << " *" << endl <<
-				this->nspace_lc << name_lc << "_constant (void)" << endl <<
-				"{" << endl <<
-				"  static " << this->nspace << type->get_name() <<
-				" *constant = NULL;" << endl <<
-				"  if (constant == NULL)" << endl <<
-				"  {" << endl <<
-				"    constant = g_object_new (" << this->nspace_uc << "TYPE_" <<
-				type_uc << ", NULL);" << endl <<
-				initializers.str() << endl <<
-				"  }" << endl <<
-				"  return constant;" << endl <<
-				"}" << endl <<
-				endl;
-	} else if (type->is_list()) {
-		string list_type = "GPtrArray *";
-		// TODO: This initialization should contain a free function for container
-		string list_initializer = "g_ptr_array_new();";
-		string list_appender = "g_ptr_array_add";
-		bool list_variable = false;
-
-		t_type* etype = ((t_list*)type)->get_elem_type();
-		const vector<t_const_value*>& val = value->get_list();
-		vector<t_const_value*>::const_iterator v_iter;
-		ostringstream initializers;
-
-		list_initializer = generate_new_array_from_type (etype);
-		if (etype->is_base_type()) {
-			t_base_type::t_base tbase = ((t_base_type *) etype)->get_base();
-			switch (tbase) {
-			case t_base_type::TYPE_VOID:
-				throw "compiler error: cannot determine array type";
-			case t_base_type::TYPE_BOOL:
-			case t_base_type::TYPE_BYTE:
-			case t_base_type::TYPE_I16:
-			case t_base_type::TYPE_I32:
-			case t_base_type::TYPE_I64:
-			case t_base_type::TYPE_DOUBLE:
-				list_type = "GArray *";
-				list_appender = "g_array_append_val";
-				list_variable = true;
-				break;
-			case t_base_type::TYPE_STRING:
-				break;
-			default:
-				throw "compiler error: no array info for type";
-			}
-		}
-
-		for (v_iter = val.begin(); v_iter != val.end(); ++v_iter) {
-			string fname = tmp (name);
-
-			generate_const_initializer (fname, etype, (*v_iter));
-			if (list_variable) {
-				initializers <<
-						"    " << type_name (etype) << " " << fname << " = " <<
-						constant_value (fname, (t_type *) etype, (*v_iter)) << ";" <<
-						endl <<
-						"    " << list_appender << "(constant, " << fname << ");" << endl;
-			} else {
-				initializers <<
-						"    " << list_appender << "(constant, " <<
-						constant_value (fname, (t_type *) etype, (*v_iter)) << ");" << endl;
-			}
-		}
-
-		f_types_impl_ <<
-				"static " << list_type << endl <<
-				this->nspace_lc << name_lc << "_constant (void)" << endl <<
-				"{" << endl <<
-				"  static " << list_type << " constant = NULL;" << endl <<
-				"  if (constant == NULL)" << endl <<
-				"  {" << endl <<
-				"    constant = " << list_initializer << endl <<
-				initializers.str() << endl <<
-				"  }" << endl <<
-				"  return constant;" << endl <<
-				"}" << endl <<
-				endl;
-	} else if (type->is_set()) {
-		t_type *etype = ((t_set *) type)->get_elem_type();
-		const vector<t_const_value *>& val = value->get_list();
-		vector<t_const_value*>::const_iterator v_iter;
-		ostringstream initializers;
-
-		for (v_iter = val.begin(); v_iter != val.end(); ++v_iter) {
-			string fname = tmp (name);
-			generate_const_initializer (fname, etype, (*v_iter));
-			initializers <<
-					"    " << type_name (etype) << " " << fname << " = " <<
-					constant_value (fname, (t_type *) etype, (*v_iter)) << ";" << endl <<
-					"    g_hash_table_insert (constant, &" << fname << ", &" << fname <<
-					");" << endl;
-		}
-
-		f_types_impl_ <<
-				"static GHashTable *" << endl <<
-				this->nspace_lc << name_lc << "_constant (void)" << endl <<
-				"{" << endl <<
-				"  static GHashTable *constant = NULL;" << endl <<
-				"  if (constant == NULL)" << endl <<
-				"  {" << endl <<
-				// TODO: This initialization should contain a free function for elements
-				"    constant = g_hash_table_new (NULL, NULL);" << endl <<
-				initializers.str() << endl <<
-				"  }" << endl <<
-				"  return constant;" << endl <<
-				"}" << endl <<
-				endl;
-	} else if (type->is_map()) {
-		t_type *ktype = ((t_map *) type)->get_key_type();
-		t_type *vtype = ((t_map *) type)->get_val_type();
-		const vector<t_const_value *>& val = value->get_list();
-		vector<t_const_value*>::const_iterator v_iter;
-		ostringstream initializers;
-
-		for (v_iter = val.begin(); v_iter != val.end(); ++v_iter) {
-			string fname = tmp (name);
-			string kname = fname + "key";
-			string vname = fname + "val";
-			generate_const_initializer (kname, ktype, (*v_iter));
-			generate_const_initializer (vname, vtype, (*v_iter));
-
-			initializers <<
-					"    " << type_name (ktype) << " " << kname << " = " <<
-					constant_value (kname, (t_type *) ktype, (*v_iter)) << ";" << endl <<
-					"    " << type_name (vtype) << " " << vname << " = " <<
-					constant_value (vname, (t_type *) vtype, (*v_iter)) << ";" << endl <<
-					"    g_hash_table_insert (constant, &" << fname << ", &" << fname <<
-					");" << endl;
-		}
-
-		f_types_impl_ <<
-				"static GHashTable *" << endl <<
-				this->nspace_lc << name_lc << "_constant (void)" << endl <<
-				"{" << endl <<
-				"  static GHashTable *constant = NULL;" << endl <<
-				"  if (constant == NULL)" << endl <<
-				"  {" << endl <<
-				// TODO: This initialization should contain a free function for elements
-				"    constant = g_hash_table_new (NULL, NULL);" << endl <<
-				initializers.str() << endl <<
-				"  }" << endl <<
-				"  return constant;" << endl <<
-				"}" << endl <<
-				endl;
-	}
 }
 
 /**
@@ -1644,7 +1495,7 @@ void t_c_nano_generator::generate_object(t_struct *tstruct) {
 	string name_u = tn_initial_caps_to_underscores(name);
 	string name_uc = tn_to_upper_case(name_u);
 	string type_prefix = this->nspace_lc + name_u;
-	string type_name_t = type_prefix + "_t";
+	string type_name_t = tn_type_name(tstruct->get_name(), this->nspace_lc);
 
 	// write the instance definition
 	f_types_ <<
@@ -1658,228 +1509,131 @@ void t_c_nano_generator::generate_object(t_struct *tstruct) {
 	for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
 		t_type *t = get_true_type ((*m_iter)->get_type());
 		f_types_ << "  " << type_name (t) << " " << (*m_iter)->get_name() << ";" << endl;
-		//    if ((*m_iter)->get_req() != t_field::T_REQUIRED) {
-		//      f_types_ <<
-		//        "  gboolean __isset_" << (*m_iter)->get_name() << ";" << endl;
-		//    }
 	}
 
 	// close the structure definition and create a typedef
 	f_types_ << "} " << type_name_t << ";" << endl;
-
-	// write the create/init funcs
-	f_types_ << type_name_t << "* " << type_prefix << "_create();" << endl;
-	f_types_ << type_name_t << "* " << type_prefix << "_init("<< type_name_t <<"*);" << endl;
 
 	// start writing the object implementation .c file generate struct I/O methods
 	string this_get = type_name_t + " *self = ("+ type_name_t + "*) data;";
 	generate_struct_reader (f_types_impl_, tstruct, "self->", this_get);
 	generate_struct_writer (f_types_impl_, tstruct, "self->", this_get);
 
+	// create the destructor
+	generate_struct_destructor (tstruct, type_prefix, type_name_t);
+
 	// generate the instance init function
-	f_types_impl_ <<
-			"static " << type_name_t << "* " << endl << type_prefix << "_init (" << type_name_t << " * object)" << endl <<
-			"{" << endl;
+	generate_struct_init (tstruct, type_prefix, type_name_t);
 
-	// satisfy compilers with -Wall turned on
+	// generate the create function
+	generate_struct_create (tstruct, type_prefix, type_name_t);
+}
+
+void t_c_nano_generator::generate_struct_create(t_struct *tstruct, string type_prefix, string type_name_t) {
+	f_types_      << type_name_t << "* " << type_prefix << "_create(tn_error_t *);" << endl;
+	f_types_impl_ << type_name_t << "* " << endl << type_prefix << "_create(tn_error_t *error)" << endl << "{" << endl;
 	indent_up();
-	//indent(f_types_impl_) << "/* satisfy -Wall */" << endl <<
-	//             indent() << "THRIFT_UNUSED_VAR (object);" << endl;
+	indent(f_types_impl_) << type_name_t << " *object = NULL;" << endl;
+	indent(f_types_impl_) << "return_if_fail(object, object = tn_alloc(sizeof(" << type_name_t << "), error));" << endl;
 
+	vector<t_field *>::const_iterator fiter;
+	const vector<t_field *> &fields = tstruct->get_members();
+	for (fiter = fields.begin(); fiter != fields.end(); ++fiter) {
+		t_type* t = get_true_type ((*fiter)->get_type());
+		if (is_complex_type(t) || t->is_string()) {
+			indent(f_types_impl_) << "object->" << (*fiter)->get_name() << " = NULL;" << endl;
+		}
+	}
+	indent(f_types_impl_) << "return " << type_prefix << "_init(object, error);" << endl;
+	indent_down();
+	indent(f_types_impl_) << "}" << endl << endl;
+}
+
+void t_c_nano_generator::generate_struct_destructor(t_struct *tstruct, string type_prefix, string type_name_t) {
+	f_types_impl_ <<
+			"static void " << endl <<
+			type_prefix << "_destroy(tn_object_t *object)" << endl <<
+			"{" << endl;
+	indent_up();
+
+	indent(f_types_impl_) << type_name_t << " *self = (" << type_name_t << "*) object;" << endl;
+
+	vector<t_field *>::const_iterator m_iter;
+	const vector<t_field *> &members = tstruct->get_members();
 	for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
 		t_type* t = get_true_type ((*m_iter)->get_type());
-		if (t->is_base_type()) {
+		string name = (*m_iter)->get_name();
+		if(is_complex_type(t) || t->is_string()) {
+			indent(f_types_impl_) << "if (self->" << name << " != NULL) {" << endl;
+			indent_up();
+			indent(f_types_impl_) << "tn_object_destroy(self->" << name << ");" << endl;
+			indent(f_types_impl_) << "self->" << name << " = NULL;" << endl;
+			indent_down();
+			indent(f_types_impl_) << "}" << endl;
+		}
+	}
+	indent(f_types_impl_) << "tn_free(self);" << endl;
+	indent_down();
+	indent(f_types_impl_) << "}" << endl << endl;
+}
+
+void t_c_nano_generator::generate_struct_init(t_struct *tstruct, string type_prefix, string type_name_t) {
+	f_types_ << type_name_t << "* " << type_prefix << "_init("<< type_name_t <<"*, tn_error_t *);" << endl;
+	f_types_impl_ <<
+			type_name_t << "* " << endl << type_prefix << "_init (" << type_name_t
+			<< " *self, tn_error_t *error)" << endl <<
+			"{" << endl;
+
+	indent_up();
+
+	vector<t_field *>::const_iterator fiter;
+	const vector<t_field *> &fields = tstruct->get_members();
+	for (fiter = fields.begin(); fiter != fields.end(); ++fiter) {
+		t_type* t = get_true_type ((*fiter)->get_type());
+		string name = (*fiter)->get_name();
+		if (is_complex_type(t) || t->is_string()) {
+			indent(f_types_impl_) << "if( self->"<< name <<" != NULL ) {" << endl;
+			indent_up();
+
+			if( t->is_xception() ) {
+				// TODO: handle exception
+			} else if( t->is_struct() ) {
+				string field_type_prefix = tn_type_prefix(t->get_name(), this->nspace_lc);
+				indent(f_types_impl_) << field_type_prefix << "_init(self->"<< name <<", error);" << endl;
+			} else if( t->is_map() ) {
+				indent(f_types_impl_) << "tn_map_clear(self->"<< name <<");" << endl;
+			} else if( t->is_set() ) {
+				indent(f_types_impl_) << "tn_list_clear(self->"<< name <<");" << endl;
+			} else if( t->is_list() ) {
+				indent(f_types_impl_) << "tn_list_clear(self->"<< name <<");" << endl;
+			} else if( t->is_string() ) {
+				indent(f_types_impl_) << "tn_buffer_reset(self->"<< name <<");" << endl;
+			}
+
+			indent_down();
+			indent(f_types_impl_) << "}" << endl;
+		} else if (t->is_base_type()) {
 			// only have init's for base types
 			string dval = " = ";
 			if (t->is_enum()) {
 				dval += "(" + type_name (t) + ")";
 			}
-			t_const_value* cv = (*m_iter)->get_value();
+			t_const_value* cv = (*fiter)->get_value();
 			if (cv != NULL) {
 				dval += constant_value ("", t, cv);
 			} else {
 				dval += t->is_string() ? "NULL" : "0";
 			}
-			indent(f_types_impl_) << "object->" << (*m_iter)->get_name() << dval << ";" << endl;
-		} else if (t->is_struct()) {
-			string name = (*m_iter)->get_name();
-			string type_name_uc = tn_to_upper_case
-					(tn_initial_caps_to_underscores((*m_iter)->get_type()->get_name()));
-			indent(f_types_impl_) << "object->" << name << " = NULL;" << endl;
-		} else if (t->is_xception()) {
-			string name = (*m_iter)->get_name();
-			indent(f_types_impl_) << "object->" << name << " = NULL;" << endl;
-		} else if (t->is_container()) {
-			string name = (*m_iter)->get_name();
-			string init_function;
-
-			if (t->is_map()) {
-				t_type *key = ((t_map *) t)->get_key_type();
-				t_type *value = ((t_map *) t)->get_val_type();
-				init_function = generate_new_hash_from_type (key, value);
-			} else if (t->is_set()) {
-				t_type *etype = ((t_set *) t)->get_elem_type();
-				init_function = generate_new_hash_from_type (etype, NULL);
-			} else if (t->is_list()) {
-				t_type *etype = ((t_list *) t)->get_elem_type();
-				init_function = generate_new_array_from_type (etype);
-			}
-
-			indent(f_types_impl_) << "object->" << name << " = " <<
-					init_function << endl;
-
-		}
-
-		/* if not required, initialize the __isset variable */
-		//if ((*m_iter)->get_req() != t_field::T_REQUIRED) {
-		//  indent(f_types_impl_) << "object->__isset_" << (*m_iter)->get_name() << " = FALSE;" << endl;
-		//}
-	}
-
-	indent_down();
-	f_types_impl_ << "}" << endl <<
-			endl;
-
-	/* create the destructor */
-	f_types_impl_ <<
-			"static void " << endl <<
-			this->nspace_lc << name_u << "_destroy(void *object)" << endl <<
-			"{" << endl;
-	indent_up();
-
-	f_types_impl_ <<
-			indent() << type_name_t << " *tobject = (" << type_name_t << "*) object;"
-			<< endl << endl;
-
-//	f_types_impl_ <<
-//			indent() << "/* satisfy -Wall in case we don't use tobject */" << endl <<
-//			indent() << "THRIFT_UNUSED_VAR (tobject);" << endl;
-
-	for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-		t_type* t = get_true_type ((*m_iter)->get_type());
-		if (t->is_container()) {
-			string name = (*m_iter)->get_name();
-			if (t->is_map() || t->is_set()) {
-				f_types_impl_ << indent() << "if (tobject->" << name << " != NULL)" << endl;
-				f_types_impl_ << indent() << "{" << endl;
-				indent_up();
-				f_types_impl_ <<
-						indent() << "g_hash_table_destroy (tobject->" << name << ");" << endl;
-				f_types_impl_ << indent() << "tobject->" << name << " = NULL;" << endl;
-				indent_down();
-				f_types_impl_ << indent() << "}" << endl;
-			} else if (t->is_list()) {
-				t_type *etype = ((t_list *) t)->get_elem_type();
-				string destructor_function = "tn_list_destroy";
-
-				if (etype->is_base_type()) {
-					t_base_type::t_base tbase = ((t_base_type *) etype)->get_base();
-					switch (tbase) {
-					case t_base_type::TYPE_VOID:
-						throw "compiler error: cannot determine array type";
-					case t_base_type::TYPE_BOOL:
-					case t_base_type::TYPE_BYTE:
-					case t_base_type::TYPE_I16:
-					case t_base_type::TYPE_I32:
-					case t_base_type::TYPE_I64:
-					case t_base_type::TYPE_DOUBLE:
-						break;
-					case t_base_type::TYPE_STRING:
-						break;
-					default:
-						throw "compiler error: no array info for type";
-					}
-				}
-
-				f_types_impl_ << indent() << "if (tobject->" << name << " != NULL)" << endl;
-				f_types_impl_ << indent() << "{" << endl;
-				indent_up();
-				f_types_impl_ <<
-						indent() << destructor_function << " (tobject->" << name <<
-						");" << endl;
-				f_types_impl_ << indent() << "tobject->" << name << " = NULL;" << endl;
-				indent_down();
-				f_types_impl_ << indent() << "}" << endl;
-			}
-		} else if (t->is_struct() || t->is_xception()) {
-			string name = (*m_iter)->get_name();
-			// TODO: g_clear_object needs glib >= 2.28
-			// f_types_impl_ << indent() << "g_clear_object (&(tobject->" << name << "));" << endl;
-			// does g_object_unref the trick?
-			f_types_impl_ << indent() << "if (tobject->" << name << " != NULL)" << endl;
-			f_types_impl_ << indent() << "{" << endl;
-			indent_up();
-			f_types_impl_ <<
-					indent() << "g_object_unref(tobject->" << name << ");" << endl;
-			f_types_impl_ << indent() << "tobject->" << name << " = NULL;" << endl;
-			indent_down();
-			f_types_impl_ << indent() << "}" << endl;
-		} else if (t->is_string()) {
-			string name = (*m_iter)->get_name();
-			f_types_impl_ << indent() << "if (tobject->" << name << " != NULL)" << endl;
-			f_types_impl_ << indent() << "{" << endl;
-			indent_up();
-			f_types_impl_ <<
-					indent() << generate_free_func_from_type(t) << "(tobject->" << name << ");" << endl;
-			f_types_impl_ << indent() << "tobject->" << name << " = NULL;" << endl;
-			indent_down();
-			f_types_impl_ << indent() << "}" << endl;
+			indent(f_types_impl_) << "self->" << name << dval << ";" << endl;
 		}
 	}
+
+	indent(f_types_impl_) << "self->parent.parent.tn_destroy = &" << type_prefix << "_destroy;" << endl;
+	indent(f_types_impl_) << "self->parent.tn_write = &" << type_prefix << "_write;" << endl;
+	indent(f_types_impl_) << "self->parent.tn_read = &" << type_prefix << "_read;" << endl;
 
 	indent_down();
 	f_types_impl_ << "}" << endl << endl;
-
-
-//	f_types_impl_ <<
-//			"static void " << endl <<
-//			this->nspace_lc << name_u << "_class_init (ThriftStructClass * cls)" << endl <<
-//			"{" << endl;
-//	indent_up();
-//
-//	f_types_impl_ <<
-//			indent() << "GObjectClass *gobject_class = G_OBJECT_CLASS (cls);" << endl <<
-//			endl <<
-//			indent() << "gobject_class->finalize = " << this->nspace_lc << name_u << "_finalize;" << endl <<
-//			indent() << "cls->read = " << this->nspace_lc << name_u << "_read;" << endl <<
-//			indent() << "cls->write = " << this->nspace_lc << name_u << "_write;" << endl;
-//
-//	indent_down();
-//	f_types_impl_ <<
-//			"}" << endl <<
-//			endl;
-//
-//
-//	f_types_impl_ <<
-//			"GType" << endl <<
-//			this->nspace_lc << name_u << "_get_type (void)" << endl <<
-//			"{" << endl <<
-//			"  static GType type = 0;" << endl <<
-//			endl <<
-//			"  if (type == 0) " << endl <<
-//			"  {" << endl <<
-//			"    static const GTypeInfo type_info = " << endl <<
-//			"    {" << endl <<
-//			"      sizeof (" << this->nspace << name << "Class)," << endl <<
-//			"      NULL, /* base_init */" << endl <<
-//			"      NULL, /* base_finalize */" << endl <<
-//			"      (GClassInitFunc) " << this->nspace_lc << name_u << "_class_init," << endl <<
-//			"      NULL, /* class_finalize */" << endl <<
-//			"      NULL, /* class_data */" << endl <<
-//			"      sizeof (" << this->nspace << name << ")," << endl <<
-//			"      0, /* n_preallocs */" << endl <<
-//			"      (GInstanceInitFunc) " << this->nspace_lc << name_u << "_instance_init," << endl <<
-//			"      NULL, /* value_table */" << endl <<
-//			"    };" << endl <<
-//			endl <<
-//			"    type = g_type_register_static (THRIFT_TYPE_STRUCT, " << endl <<
-//			"                                   \"" << this->nspace << name << "Type\"," << endl <<
-//			"                                   &type_info, 0);" << endl <<
-//			"  }" << endl <<
-//			endl <<
-//			"  return type;" << endl <<
-//			"}" << endl <<
-//			endl;
 }
 
 /**
@@ -1893,75 +1647,75 @@ void t_c_nano_generator::generate_struct_writer (ofstream &out,
 	string name = tstruct->get_name();
 	string name_u = tn_initial_caps_to_underscores(name);
 	string name_uc = tn_to_upper_case(name_u);
-	string tn_name_t = this->nspace_lc + tn_to_lower_case(name_uc) + "_t";
+	string tn_name_t = tn_type_name(tstruct->get_name(), this->nspace_lc);
 
 	const vector<t_field *> &fields = tstruct->get_members();
 	vector <t_field *>::const_iterator f_iter;
-	int error_ret = 0;
 
 	if (is_function) {
-		error_ret = -1;
 		indent(out) <<
 				"static size_t" << endl <<
 				this->nspace_lc << name_u <<
-				"_write (tn_struct_t *object, tn_protocol_t *protocol, tn_transport_t *transport)" << endl;
+				"_write (void *data, tn_protocol_t *protocol, tn_transport_t *transport, tn_error_t *error)" << endl;
 	}
 	indent(out) << "{" << endl;
 	indent_up();
 
-	out <<
-			indent() << "size_t ret;" << endl <<
-			indent() << "size_t xfer = 0;" << endl <<
-			endl;
-
+	bool has_container = false;
+	bool has_map = false;
+	for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
+		t_type *ftype = (*f_iter)->get_type();
+		if(ftype->is_container()) {
+			has_container = true;
+			if(ftype->is_map()) {
+				has_map = true;
+				break;
+			}
+		}
+	}
+	if(has_container) {
+		out <<
+				indent() << "tn_buffer_t buf;" << endl <<
+				indent() << "size_t i = 0;" << endl <<
+				indent() << "size_t size = 0;" << endl <<
+				indent() << "tn_type_t value_type;" << endl;
+	}
+	if( has_map ) {
+		out  <<
+				indent() << "tn_type_t key_type;" << endl <<
+				indent() << "tn_map_elem_t *e;" << endl;
+	}
+	out << indent() << "size_t ret = 0;" << endl << endl;
 	indent(out) << this_get << endl;
-//	// satisfy -Wall in the case of an empty struct
-//	if (!this_get.empty()) {
-//		indent(out) << "THRIFT_UNUSED_VAR (this_object);" << endl;
-//	}
 
-	out <<
-			indent() << "if ((ret = protocol->tn_protocol_write_struct_begin (protocol, transport, object)) < 0)" << endl <<
-			indent() << "  return " << error_ret << ";" << endl <<
-			indent() << "xfer += ret;" << endl;
+	indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_struct_begin(protocol, transport, data, error));" << endl;
 
 	for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-//		if ((*f_iter)->get_req() == t_field::T_OPTIONAL) {
-//			indent(out) << "if (this_object->__isset_" << (*f_iter)->get_name() << " == TRUE) {" << endl;
-//			indent_up();
-//		}
-
-		out <<
-				indent() << "if ((ret = protocol->tn_protocol_write_field_begin (protocol, transport, " <<
+		t_type *ftype = (*f_iter)->get_type();
+		indent(out) << endl;
+        if(is_complex_type(ftype) || ftype->is_string()) {
+            indent(out) << "if( "<< this_name << (*f_iter)->get_name() <<" != NULL ) {" << endl;
+            indent_up();
+        }
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, " <<
 				"\"" << (*f_iter)->get_name() << "\", " <<
 				type_to_enum ((*f_iter)->get_type()) << ", " <<
-				(*f_iter)->get_key() << ")) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl;
-		generate_serialize_field (out, *f_iter, this_name, "", error_ret);
-		out <<
-				indent() << "if ((ret = protocol->tn_protocol_write_field_end (protocol, transport)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl;
-
-//		if ((*f_iter)->get_req() == t_field::T_OPTIONAL) {
-//			indent_down();
-//			indent(out) << "}" << endl;
-//		}
+				(*f_iter)->get_key() << ", error));" << endl;
+		generate_serialize_field (out, *f_iter, this_name, "");
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));" << endl;
+		if(is_complex_type(ftype) || ftype->is_string()) {
+            indent_down();
+            indent(out) << "}" << endl;
+        }
 	}
 
 	// write the struct map
-	out <<
-			indent() << "if ((ret = protocol->tn_protocol_write_field_stop (protocol, error)) < 0)" << endl <<
-			indent() << "  return " << error_ret << ";" << endl <<
-			indent() << "xfer += ret;" << endl <<
-			indent() << "if ((ret = protocol->tn_protocol_write_struct_end (protocol, error)) < 0)" << endl <<
-			indent() << "  return " << error_ret << ";" << endl <<
-			indent() << "xfer += ret;" << endl <<
-			endl;
+	indent(out) << endl;
+    indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_field_stop (protocol, transport, error));" << endl;
+    indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_struct_end (protocol, transport, error));" << endl;
 
 	if (is_function) {
-		indent(out) << "return xfer;" << endl;
+		indent(out) << "return ret;" << endl;
 	}
 
 	indent_down();
@@ -1979,98 +1733,75 @@ void t_c_nano_generator::generate_struct_reader(ofstream &out,
 	string name = tstruct->get_name();
 	string name_u = tn_initial_caps_to_underscores(name);
 	string name_uc = tn_to_upper_case(name_u);
-	int error_ret = 0;
 	const vector<t_field *> &fields = tstruct->get_members();
 	vector <t_field *>::const_iterator f_iter;
 
 	if (is_function) {
-		error_ret = -1;
 		indent(out) <<
 				"/* reads a " << name_u << " object */" << endl <<
 				"static size_t" << endl << this->nspace_lc << name_u <<
-				"_read (void *data, tn_protocol_t *protocol, tn_transport_t *transport)" << endl;
+				"_read (void *data, tn_protocol_t *protocol, tn_transport_t *transport, tn_error_t *error)" << endl;
 	}
 
 	indent(out) << "{" << endl;
 	indent_up();
 
 	// declare stack temp variables
+	bool has_string = false;
+	bool has_container = false;
+	bool has_map = false;
+	for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
+		t_type *ftype = (*f_iter)->get_type();
+		if(ftype->is_string()){
+			has_string = true;
+		} else if(ftype->is_container()) {
+			has_container = true;
+			if(ftype->is_map()) {
+				has_map = true;
+			}
+		}
+	}
+	if(has_string || has_container) {
+		indent(out) << "size_t size = 0;" << endl;
+	}
+	if(has_container) {
+		out <<
+				indent() << "tn_buffer_t buf;" << endl <<
+				indent() << "size_t i = 0;" << endl <<
+				indent() << "size_t cont_size = 0;" << endl <<
+				indent() << "tn_type_t value_type;" << endl;
+	}
+	if( has_map ) {
+		out  << indent() << "tn_type_t key_type;" << endl;
+	}
 	out <<
-			indent() << "size_t ret;" << endl <<
-			indent() << "size_t xfer = 0;" << endl <<
+			indent() << "size_t ret = 0;" << endl <<
 			indent() << "tn_type_t ftype;" << endl <<
 			indent() << "int16_t fid;" << endl <<
-			indent() << "int32_t len = 0;" << endl <<
 			indent() << this_get << endl <<
-			indent() << this->nspace_lc << name_u << "_init(self);" << endl;
+			indent() << this->nspace_lc << name_u << "_init(self, error);" << endl;
 
-	/*
-  for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    if ((*f_iter)->get_req() == t_field::T_REQUIRED) {
-      indent(out) << "gboolean isset_" << (*f_iter)->get_name() << " = FALSE;" << endl;
-    }
-  }*/
-
-	out << endl;
-
-	// satisfy -Wall in case we don't use some variables
-	//out <<
-	//  indent() << "/* satisfy -Wall in case these aren't used */" << endl <<
-	//  indent() << "THRIFT_UNUSED_VAR (len);" << endl <<
-	//  indent() << "THRIFT_UNUSED_VAR (data);" << endl;
-
-	//if (!this_get.empty()) {
-	//  out << indent() << "THRIFT_UNUSED_VAR (this_object);" << endl;
-	//}
-	out << endl;
 
 	// read the beginning of the structure marker
-	out <<
-			indent() << "/* read the struct begin marker */" << endl <<
-			indent() << "if ((ret = tn_protocol_read_struct_begin(protocol, transport, data)) < 0)" << endl <<
-			indent() << "{" << endl <<
-			//indent() << "  if (name) g_free (name);" << endl <<
-			indent() << "  return " << error_ret << ";" << endl <<
-			indent() << "}" << endl <<
-			indent() << "xfer += ret;" << endl <<
-			//indent() << "if (name) g_free (name);" << endl <<
-			//indent() << "name = NULL;" << endl <<
-			endl;
+	indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_struct_begin(protocol, transport, error));" << endl;
 
 	// read the struct fields
-	out <<
-			indent() << "/* read the struct fields */" << endl <<
-			indent() << "while (1)" << endl;
-	scope_up(out);
+	indent(out) << "while (1) {" << endl;
+	indent_up();
 
 	// read beginning field marker
-	out <<
-			indent() << "/* read the beginning of a field */" << endl <<
-			indent() << "if ((ret = tn_protocol_read_field_begin (protocol, transport, &ftype, &fid)) < 0)" << endl <<
-			indent() << "{" << endl <<
-			//indent() << "  if (name) g_free (name);" << endl <<
-			indent() << "  return " << error_ret << ";" << endl <<
-			indent() << "}" << endl <<
-			indent() << "xfer += ret;" << endl <<
-			//indent() << "if (name) g_free (name);" << endl <<
-			//indent() << "name = NULL;" << endl <<
-			endl;
+	indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_field_begin(protocol, transport, NULL, &ftype, &fid, error));" << endl;
 
 	// check for field STOP marker
-	out <<
-			indent() << "/* break if we get a STOP field */" << endl <<
-			indent() << "if (ftype == T_STOP)" << endl <<
-			indent() << "{" << endl <<
-			indent() << "  break;" << endl <<
-			indent() << "}" << endl <<
-			endl;
+	indent(out) << "if( ftype == T_STOP ) {" << endl;
+	indent_up();
+	indent(out) << "break;" << endl;
+	indent_down();
+	indent(out) << "}" << endl;
 
 	// switch depending on the field type
-	indent(out) <<
-			"switch (fid)" << endl;
-
-	// start switch
-	scope_up(out);
+	indent(out) << "switch( fid ) {" << endl;
+	indent_up();
 
 	// generate deserialization code for known types
 	for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
@@ -2078,21 +1809,16 @@ void t_c_nano_generator::generate_struct_reader(ofstream &out,
 				"case " << (*f_iter)->get_key() << ":" << endl;
 		indent_up();
 		indent(out) <<
-				"if (ftype == " << type_to_enum ((*f_iter)->get_type()) << ")" << endl;
-		indent(out) <<
-				"{" << endl;
+				"if (ftype == " << type_to_enum ((*f_iter)->get_type()) << ") {" << endl;
 
-
-		indent_up();
+        indent_up();
 		// generate deserialize field
-		generate_deserialize_field (out, *f_iter, this_name, "", error_ret, false);
+		generate_deserialize_field(out, *f_iter, this_name);
 		indent_down();
 
 		out <<
 				indent() << "} else {" << endl <<
-				indent() << "  //if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)" << endl <<
-				indent() << "  //  return " << error_ret << ";" << endl <<
-				indent() << "  xfer += ret;" << endl <<
+				indent() << "  return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, ftype, error));" << endl <<
 				indent() << "}" << endl <<
 				indent() << "break;" << endl;
 		indent_down();
@@ -2101,63 +1827,36 @@ void t_c_nano_generator::generate_struct_reader(ofstream &out,
 	// create the default case
 	out <<
 			indent() << "default:" << endl <<
-			indent() << "  //if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)" << endl <<
-			indent() << "  //  return " << error_ret << ";" << endl <<
-			indent() << "  xfer += ret;" << endl <<
+			indent() << "  return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, ftype, error));" << endl <<
 			indent() << "  break;" << endl;
 
 	// end switch
-	scope_down(out);
+	indent_down();
+	indent(out) << "}" << endl;
 
 	// read field end marker
-	out <<
-			indent() << "if ((ret = tn_protocol_read_field_end (protocol, transport)) < 0)" << endl <<
-			indent() << "  return " << error_ret << ";" << endl <<
-			indent() << "xfer += ret;" << endl;
+	indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_field_end(protocol, transport, error));" << endl;
 
 	// end while loop
-	scope_down(out);
-	out << endl;
+	indent_down();
+	indent(out) << "}" << endl;
 
 	// read the end of the structure
-	out <<
-			indent() << "if ((ret = tn_protocol_read_struct_end (protocol, transport)) < 0)" << endl <<
-			indent() << "  return " << error_ret << ";" << endl <<
-			indent() << "xfer += ret;" << endl <<
-			endl;
-
-	// if a required field is missing, throw an error
-	//for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-	//  if ((*f_iter)->get_req() == t_field::T_REQUIRED) {
-	//    out <<
-	//      indent() << "if (!isset_" << (*f_iter)->get_name() << ")" << endl <<
-	//      indent() << "{" << endl <<
-	//      indent() << "  g_set_error (error, THRIFT_PROTOCOL_ERROR," << endl <<
-	//      indent() << "               THRIFT_PROTOCOL_ERROR_INVALID_DATA," << endl <<
-	//      indent() << "               \"missing field\");" << endl <<
-	//      indent() << "  return -1;" << endl <<
-	//      indent() << "}" << endl <<
-	//      endl;
-	//  }
-	//}
+	indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_struct_end(protocol, transport, error));" << endl;
 
 	if (is_function) {
-		indent(out) <<
-				"return xfer;" << endl;
+		indent(out) << "return ret;" << endl;
 	}
 
 	// end the function/structure
 	indent_down();
-	indent(out) <<
-			"}" << endl <<
-			endl;
+	indent(out) << "}" << endl << endl;
 }
 
 void t_c_nano_generator::generate_serialize_field(ofstream &out,
 		t_field *tfield,
 		string prefix,
-		string suffix,
-		int error_ret) {
+		string suffix) {
 	t_type *type = get_true_type (tfield->get_type());
 	string name = prefix + tfield->get_name() + suffix;
 
@@ -2166,56 +1865,70 @@ void t_c_nano_generator::generate_serialize_field(ofstream &out,
 	}
 
 	if (type->is_struct() || type->is_xception()) {
-		generate_serialize_struct (out, (t_struct *) type, name, error_ret);
+		generate_serialize_struct (out, (t_struct *) type, name);
 	} else if (type->is_container()) {
-		generate_serialize_container (out, type, name, error_ret);
+		generate_serialize_container (out, type, name);
 	} else if (type->is_base_type() || type->is_enum()) {
-		indent(out) <<
-				"if ((ret = protocol->tn_protocol_write_";
+		string writetype = "";
+		bool is_string = false;
 
 		if (type->is_base_type()) {
-			t_base_type::t_base tbase = ((t_base_type *) type)->get_base();
+			t_base_type *tbase_type = (t_base_type *) type;
+			t_base_type::t_base tbase = tbase_type->get_base();
+
 			switch (tbase) {
 			case t_base_type::TYPE_VOID:
 				throw "compiler error: cannot serialize void field in a struct: "
 				+ name;
 				break;
 			case t_base_type::TYPE_BOOL:
-				out << "bool (protocol, " << name;
+				writetype = "bool";
 				break;
 			case t_base_type::TYPE_BYTE:
-				out << "byte (protocol, " << name;
+				writetype = "byte";
 				break;
 			case t_base_type::TYPE_I16:
-				out << "i16 (protocol, " << name;
+				writetype = "int16";
 				break;
 			case t_base_type::TYPE_I32:
-				out << "i32 (protocol, " << name;
+				writetype = "int32";
 				break;
 			case t_base_type::TYPE_I64:
-				out << "i64 (protocol, " << name;
+				writetype = "int64";
 				break;
 			case t_base_type::TYPE_DOUBLE:
-				out << "double (protocol, " << name;
+				writetype = "double";
 				break;
 			case t_base_type::TYPE_STRING:
-				if (((t_base_type *) type)->is_binary()) {
-					out << "binary (protocol, ((GByteArray *) " << name <<
-							")->data, ((GByteArray *) " << name <<
-							")->len";
+				is_string = true;
+				if( tbase_type->is_binary() ) {
+					writetype = "bytes";
 				} else {
-					out << "string (protocol, " << name;
+					writetype = "string";
 				}
 				break;
 			default:
 				throw "compiler error: no C writer for base type "
 				+ t_base_type::t_base_name (tbase) + name;
 			}
+
 		} else if (type->is_enum()) {
-			out << "i32 (protocol, (gint32) " << name;
+			writetype = "int32";
+			name = "(int32_t) " + name;
 		}
-		out << ", error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl;
+
+		if( is_string ) {
+			indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_" << writetype
+					<< "_begin(protocol, transport, " << name << "->pos, error));" << endl;
+		}
+
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_" << writetype
+				<< "(protocol, transport, " << name << ", error));" << endl;
+
+		if( is_string ) {
+			indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_"<< writetype
+					<<"_end(protocol, transport, error));" << endl;
+		}
 	} else {
 		printf ("DO NOT KNOW HOW TO SERIALIZE FIELD '%s' TYPE '%s'\n",
 				name.c_str(), type_name (type).c_str());
@@ -2224,239 +1937,134 @@ void t_c_nano_generator::generate_serialize_field(ofstream &out,
 
 void t_c_nano_generator::generate_serialize_struct(ofstream &out,
 		t_struct *tstruct,
-		string prefix,
-		int error_ret) {
+		string prefix) {
 	(void) tstruct;
-	out <<
-			indent() << "if ((ret = thrift_struct_write (THRIFT_STRUCT (" << prefix << "), protocol, error)) < 0)" << endl <<
-			indent() << "  return " << error_ret << ";" << endl <<
-			indent() << "xfer += ret;" << endl <<
-			endl;
+	indent(out) << "return_if_fail_or_inc(ret, tn_struct_write("<< prefix <<", protocol, transport, error));" << endl;
 }
 
 void t_c_nano_generator::generate_serialize_container(ofstream &out,
 		t_type *ttype,
-		string prefix,
-		int error_ret) {
-	scope_up(out);
-
-	if (ttype->is_map()) {
-		string length = "g_hash_table_size ((GHashTable *) " + prefix + ")";
+		string prefix) {
+	if( ttype->is_map() ) {
 		t_type *tkey = ((t_map *) ttype)->get_key_type();
 		t_type *tval = ((t_map *) ttype)->get_val_type();
 		string tkey_name = type_name (tkey);
 		string tval_name = type_name (tval);
-		string tkey_ptr = tkey->is_string() || !tkey->is_base_type() ? "" : "*";
-		string tval_ptr = tval->is_string() || !tval->is_base_type() ? "" : "*";
+		string drefkey = (!tkey->is_string() && tkey->is_base_type()) ? "*" : "";
+		string drefval = (!tval->is_string() && tval->is_base_type()) ? "*" : "";
+		string ptrkey = (!tkey->is_string() && tkey->is_base_type()) ? " *" : "";
+		string ptrval = (!tval->is_string() && tval->is_base_type()) ? " *" : "";
+		string getkey = "(" + drefkey + "("+tkey_name+ptrkey+") e->key)";
+		string getval = "(" + drefval + "("+tval_name+ptrval+") e->value)";
 
-		/*
-		 * Some ugliness here.  To maximize backwards compatibility, we
-		 * avoid using GHashTableIter and instead get a GList of all keys,
-		 * then copy it into a array on the stack, and free it.
-		 * This is because we may exit early before we get a chance to free the
-		 * GList.
-		 */
-		out <<
-				indent() << "if ((ret = protocol->tn_protocol_write_map_begin (protocol, " <<
-				type_to_enum (tkey) << ", " << type_to_enum (tval) <<
-				", (gint32) " << length << ", error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl <<
-				endl <<
-				indent() << "GList *key_list = NULL, *iter = NULL;" << endl <<
-				indent() << tkey_name << tkey_ptr << " key;" << endl <<
-				indent() << tval_name << tval_ptr << " value;" << endl <<
-				indent() << "g_hash_table_foreach ((GHashTable *) " << prefix <<
-				", thrift_hash_table_get_keys, &key_list);" << endl <<
-				indent() << tkey_name << tkey_ptr <<
-				" keys[g_list_length (key_list)];" << endl <<
-				indent() << "int i=0, key_count = g_list_length (key_list);" << endl <<
-				indent() <<
-				"for (iter = g_list_first (key_list); iter; iter = iter->next)" <<
-				endl <<
-				indent() << "{" << endl <<
-				indent() << "  keys[i++] = (" << tkey_name << tkey_ptr <<
-				") iter->data;" << endl <<
-				indent() << "}" << endl <<
-				indent() << "g_list_free (key_list);" << endl <<
-				endl <<
-				indent() << "for (i = 0; i < key_count; ++i)" << endl;
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_map_begin(protocol, transport, "<< prefix <<", error));" << endl;
+		indent(out) << "size = " << prefix << "->kvs->elem_count;" << endl;
 
-		scope_up(out);
-		out <<
-				indent() << "key = keys[i];" << endl <<
-				indent() << "value = (" << tval_name << tval_ptr <<
-				") g_hash_table_lookup (((GHashTable *) " << prefix <<
-				"), (gpointer) key);" << endl <<
-				endl;
-		generate_serialize_map_element (out, (t_map *) ttype, tkey_ptr + " key",
-				tval_ptr + " value", error_ret);
-		scope_down(out);
+		// block io support
+		if(!is_complex_type(tval) && !tval->is_string() && !is_complex_type(tkey) && !tkey->is_string()) {
+			indent(out) << "if( protocol->block_container_io ) {" << endl;
+			indent_up();
+			indent(out) << "buf.buf = "<< prefix <<"->kvs->data;" << endl;
+			indent(out) << "buf.len = buf.pos = size * "<< prefix <<"->kvs->elem_size;" << endl;
+			indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_bytes(protocol, transport, &buf, error));" << endl;
+			indent_down();
+			indent(out) << "} else {" << endl;
+			indent_up();
+		}
 
-		out <<
-				indent() << "if ((ret = protocol->tn_protocol_write_map_end (protocol, error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl;
-	} else if (ttype->is_set()) {
-		string length = "g_hash_table_size ((GHashTable *) " + prefix + ")";
+		indent(out) << "for(i = 0; i < size; i++) {" << endl;
+		indent_up();
+		indent(out) << "e = tn_map_get(" << prefix << ",i);"<< endl;
+		t_field kfield(tkey, getkey);
+		generate_serialize_field (out, &kfield, "", "");
+		t_field vfield(tval, getval);
+		generate_serialize_field (out, &vfield, "", "");
+		indent_down();
+		indent(out) << "}" << endl;
+
+		// block io support
+		if(!is_complex_type(tval) && !tval->is_string() && !is_complex_type(tkey) && !tkey->is_string()) {
+			indent_down();
+			indent(out) << "}" << endl;
+		}
+
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_map_end(protocol, transport, error));" << endl;
+
+
+	} else if( ttype->is_set() ) {
 		t_type *telem = ((t_set *) ttype)->get_elem_type();
 		string telem_name = type_name (telem);
-		string telem_ptr = telem->is_string() || !telem->is_base_type() ? "" : "*";
-		out <<
-				indent() << "if ((ret = protocol->tn_protocol_write_set_begin (protocol, " <<
-				type_to_enum (telem) << ", (gint32) " << length <<
-				", error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl <<
-				indent() << "GList *key_list = NULL, *iter = NULL;" << endl <<
-				indent() << telem_name << telem_ptr << " elem;" << endl <<
-				indent() << "gpointer value;" << endl <<
-				indent() << "THRIFT_UNUSED_VAR (value);" << endl <<
-				endl <<
-				indent() << "g_hash_table_foreach ((GHashTable *) " << prefix <<
-				", thrift_hash_table_get_keys, &key_list);" << endl <<
-				indent() << telem_name << telem_ptr << " keys[g_list_length (key_list)];" << endl <<
-				indent() << "int i=0, key_count = g_list_length (key_list);" << endl <<
-				indent() << "for (iter = g_list_first (key_list); iter; iter = iter->next)" << endl <<
-				indent() << "{" << endl <<
-				indent() << "  keys[i++] = (" << telem_name << telem_ptr << ") iter->data;" << endl <<
-				indent() << "}" << endl <<
-				indent() << "g_list_free (key_list);" << endl <<
-				endl <<
-				indent() << "for (i=0; i<key_count; ++i)" << endl;
+		string vlocal = tmp("v");
 
-		scope_up(out);
-		out <<
-				indent() << "elem = keys[i];" << endl <<
-				indent() << "value = (gpointer) g_hash_table_lookup (((GHashTable *) " <<
-				prefix << "), (gpointer) elem);" << endl <<
-				endl;
-		generate_serialize_set_element (out, (t_set *) ttype, telem_ptr + "elem",
-				error_ret);
-		scope_down(out);
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_list_begin(protocol, transport, "<< prefix <<", error));" << endl;
+		indent(out) << telem_name << " *" << vlocal << ";" << endl;
+		indent(out) << "size = " << prefix << "->elem_count;" << endl;
 
-		out <<
-				indent() << "if ((ret = protocol->tn_protocol_write_set_end (protocol, error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl;
-	} else if (ttype->is_list()) {
-		string length = prefix + "->len";
-		string i = tmp("i");
-		out <<
-				indent() << "if ((ret = protocol->tn_protocol_write_list_begin (protocol, " <<
-				type_to_enum (((t_list *) ttype)->get_elem_type()) <<
-				", (gint32) " << length << ", error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl <<
-				indent() << "guint " << i << ";" << endl <<
-				indent() << "for ("<< i << "=0; " << i << "<" << length << "; " << i <<
-				"++)" << endl;
-
-		scope_up(out);
-		generate_serialize_list_element (out, (t_list *) ttype, prefix, i, error_ret);
-		scope_down(out);
-
-		out <<
-				indent() << "if ((ret = protocol->tn_protocol_write_list_end (protocol, error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl;
-	}
-
-	scope_down(out);
-}
-
-void t_c_nano_generator::generate_serialize_map_element(ofstream &out,
-		t_map *tmap,
-		string key,
-		string value,
-		int error_ret) {
-	t_field kfield (tmap->get_key_type(), key);
-	generate_serialize_field (out, &kfield, "", "", error_ret);
-
-	t_field vfield (tmap->get_val_type(), value);
-	generate_serialize_field (out, &vfield, "", "", error_ret);
-}
-
-void t_c_nano_generator::generate_serialize_set_element(ofstream &out,
-		t_set *tset,
-		string element,
-		int error_ret) {
-	t_field efield (tset->get_elem_type(), element);
-	generate_serialize_field (out, &efield, "", "", error_ret);
-}
-
-void t_c_nano_generator::generate_serialize_list_element(ofstream &out,
-		t_list *tlist,
-		string list,
-		string index,
-		int error_ret) {
-	t_type *ttype = tlist->get_elem_type();
-
-	// cast to non-const
-	string cast = "";
-	string name = "g_ptr_array_index ((GPtrArray *) " + list + ", "
-			+ index + ")";
-
-	if (ttype->is_base_type()) {
-		t_base_type::t_base tbase = ((t_base_type *) ttype)->get_base();
-		switch (tbase) {
-		case t_base_type::TYPE_VOID:
-			throw "compiler error: cannot determine array type";
-			break;
-		case t_base_type::TYPE_BOOL:
-			name = "g_array_index (" + list + ", gboolean, " + index + ")";
-			break;
-		case t_base_type::TYPE_BYTE:
-			name = "g_array_index (" + list + ", gint8, " + index + ")";
-			break;
-		case t_base_type::TYPE_I16:
-			name = "g_array_index (" + list + ", gint16, " + index + ")";
-			break;
-		case t_base_type::TYPE_I32:
-			name = "g_array_index (" + list + ", gint32, " + index + ")";
-			break;
-		case t_base_type::TYPE_I64:
-			name = "g_array_index (" + list + ", gint64, " + index + ")";
-			break;
-		case t_base_type::TYPE_DOUBLE:
-			name = "g_array_index (" + list + ", gdouble, " + index + ")";
-			break;
-		case t_base_type::TYPE_STRING:
-			cast = "(gchar*)";
-			break;
-		default:
-			throw "compiler error: no array info for type";
+		// block io support
+		if(!is_complex_type(telem) && !telem->is_string()) {
+			indent(out) << "if( protocol->block_container_io ) {" << endl;
+			indent_up();
+			indent(out) << "buf.buf = "<< prefix <<"->data;" << endl;
+			indent(out) << "buf.len = buf.pos = size * "<< prefix <<"->elem_size;" << endl;
+			indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_bytes(protocol, transport, &buf, error));" << endl;
+			indent_down();
+			indent(out) << "} else {" << endl;
+			indent_up();
 		}
-	} else if (ttype->is_map() || ttype->is_set()) {
-		cast = "(GHashTable*)";
-	} else if (ttype->is_list()) {
-		t_type *base = ((t_list *)ttype)->get_elem_type();
-		if (base->is_base_type()) {
-			switch (((t_base_type *) base)->get_base()) {
-			case t_base_type::TYPE_VOID:
-				throw "compiler error: cannot determine array type";
-				break;
-			case t_base_type::TYPE_BOOL:
-			case t_base_type::TYPE_BYTE:
-			case t_base_type::TYPE_I16:
-			case t_base_type::TYPE_I32:
-			case t_base_type::TYPE_I64:
-			case t_base_type::TYPE_DOUBLE:
-				cast = "(GArray*)";
-				break;
-			case t_base_type::TYPE_STRING:
-				cast = "(GPtrArray*)";
-				break;
-			default:
-				throw "Compiler error: no array info for type";
-			}
-		} else {
-			cast = "(GPtrArray*)";
-		}
-	}
 
-	t_field efield (ttype, "(" + cast + name + ")");
-	generate_serialize_field (out, &efield, "", "", error_ret);
+		indent(out) << "for(i = 0; i < size; i++) {" << endl;
+		indent_up();
+		indent(out) << vlocal << " = tn_list_get(" << prefix << ",i);"<< endl;
+		t_field vfield(telem, vlocal);
+		generate_serialize_field (out, &vfield, "*", "");
+		indent_down();
+		indent(out) << "}" << endl;
+
+		// block io support
+		if(!is_complex_type(telem) && !telem->is_string()) {
+			indent_down();
+			indent(out) << "}" << endl;
+		}
+
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_list_end(protocol, transport, error));" << endl;
+
+	} else if (ttype->is_list()) {
+		t_type *telem = ((t_list *) ttype)->get_elem_type();
+		string telem_name = type_name (telem);
+		string vlocal = tmp("v");
+
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_list_begin(protocol, transport, "<< prefix <<", error));" << endl;
+		indent(out) << telem_name << " *" << vlocal << ";" << endl;
+		indent(out) << "size = " << prefix << "->elem_count;" << endl;
+
+		// block io support
+		if(!is_complex_type(telem) && !telem->is_string()) {
+			indent(out) << "if( protocol->block_container_io ) {" << endl;
+			indent_up();
+			indent(out) << "buf.buf = "<< prefix <<"->data;" << endl;
+			indent(out) << "buf.len = buf.pos = size * "<< prefix <<"->elem_size;" << endl;
+			indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_bytes(protocol, transport, &buf, error));" << endl;
+			indent_down();
+			indent(out) << "} else {" << endl;
+			indent_up();
+		}
+
+		indent(out) << "for(i = 0; i < size; i++) {" << endl;
+		indent_up();
+		indent(out) << vlocal << " = tn_list_get(" << prefix << ",i);"<< endl;
+		t_field vfield(telem, vlocal);
+		generate_serialize_field (out, &vfield, "*", "");
+		indent_down();
+		indent(out) << "}" << endl;
+
+		// block io support
+		if(!is_complex_type(telem) && !telem->is_string()) {
+			indent_down();
+			indent(out) << "}" << endl;
+		}
+
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_list_end(protocol, transport, error));" << endl;
+	}
 }
 
 /* deserializes a field of any type. */
@@ -2464,7 +2072,7 @@ void t_c_nano_generator::generate_deserialize_field(ofstream &out,
 		t_field *tfield,
 		string prefix,
 		string suffix,
-		int error_ret,
+		bool is_ptr,
 		bool allocate) {
 	t_type *type = get_true_type (tfield->get_type());
 
@@ -2473,25 +2081,30 @@ void t_c_nano_generator::generate_deserialize_field(ofstream &out,
 		prefix + tfield->get_name();
 	}
 
+	string getptr = is_ptr ? "" : "&";
 	string name = prefix + tfield->get_name() + suffix;
 
 	if (type->is_struct() || type->is_xception()) {
-		generate_deserialize_struct (out, (t_struct *) type, name, error_ret, allocate);
+		generate_deserialize_struct (out, (t_struct *) type, name, allocate);
 	} else if (type->is_container()) {
-		generate_deserialize_container (out, type, name, error_ret);
+		generate_deserialize_container (out, type, name);
 	} else if (type->is_base_type()) {
-		t_base_type::t_base tbase = ((t_base_type *) type)->get_base();
+		t_base_type *tbase_type = (t_base_type *) type;
+		t_base_type::t_base tbase = tbase_type->get_base();
 		if (tbase == t_base_type::TYPE_STRING) {
-			indent(out) << "if (" << name << " != NULL)" << endl <<
-					indent() << "{" << endl;
-			indent_up();
-			indent(out) << "g_free(" << name << ");" << endl <<
-					indent() << name << " = NULL;" << endl;
-			indent_down();
-			indent(out) << "}" << endl <<
-					endl;
+            if(tbase_type->is_binary()) {
+                indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_bytes_begin(protocol, transport, &size, error));" << endl;
+            } else {
+                indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_string_begin(protocol, transport, &size, error));" << endl;
+            }
+            indent(out) << "if( " << name << " == NULL ) { " << endl;
+            indent_up();
+            indent(out) << "return_if_fail(ret, " << name << " = tn_buffer_create(size, error));" << endl;
+            indent_down();
+            indent(out) << "}" << endl;
+            indent(out) << "tn_buffer_reset(" << name << ");" << endl;
 		}
-		indent(out) << "if ((ret = thrift_protocol_read_";
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_";
 
 		switch (tbase) {
 		case t_base_type::TYPE_VOID:
@@ -2499,523 +2112,333 @@ void t_c_nano_generator::generate_deserialize_field(ofstream &out,
 			break;
 		case t_base_type::TYPE_STRING:
 			if (((t_base_type *) type)->is_binary()) {
-				out << "binary (protocol, &data, &len";
+				out << "bytes(protocol, transport, " << name << ", size";
 			} else {
-				out << "string (protocol, &" << name;
+                out << "string(protocol, transport, " << name << ", size";
 			}
 			break;
 		case t_base_type::TYPE_BOOL:
-			out << "bool (protocol, &" << name;
+			out << "bool(protocol, transport, " << getptr << name;
 			break;
 		case t_base_type::TYPE_BYTE:
-			out << "byte (protocol, &" << name;
+			out << "byte(protocol, transport, " << getptr<< name;
 			break;
 		case t_base_type::TYPE_I16:
-			out << "i16 (protocol, &" << name;
+			out << "int16(protocol, transport, " << getptr << name;
 			break;
 		case t_base_type::TYPE_I32:
-			out << "i32 (protocol, &" << name;
+			out << "int32(protocol, transport, " << getptr << name;
 			break;
 		case t_base_type::TYPE_I64:
-			out << "i64 (protocol, &" << name;
+			out << "int64(protocol, transport, " << getptr << name;
 			break;
 		case t_base_type::TYPE_DOUBLE:
-			out << "double (protocol, &" << name;
+			out << "double(protocol, transport, " << getptr << name;
 			break;
 		default:
 			throw "compiler error: no C reader for base type "
 			+ t_base_type::t_base_name (tbase) + name;
 		}
-		out << ", error)) < 0)" << endl;
-		out << indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl;
+		out << ", error));" << endl;
 
 		// load the byte array with the data
-		if (tbase == t_base_type::TYPE_STRING
-				&& ((t_base_type *) type)->is_binary()) {
-			indent(out) << name << " = g_byte_array_new();" << endl;
-			indent(out) << "g_byte_array_append (" << name << ", (guint8 *) data, (guint) len);" << endl;
-			indent(out) << "g_free (data);" << endl;
+		if (tbase == t_base_type::TYPE_STRING) {
+            if(tbase_type->is_binary()) {
+                indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_bytes_end(protocol, transport, error));" << endl;
+            } else {
+                indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_string_end(protocol, transport, error));" << endl;
+            }
 		}
 	} else if (type->is_enum()) {
-		string t = tmp ("ecast");
-		out <<
-				indent() << "gint32 " << t << ";" << endl <<
-				indent() << "if ((ret = thrift_protocol_read_i32 (protocol, &" << t << ", error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl <<
-				indent() << name << " = (" << type_name (type) << ")" << t << ";" << endl;
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_int32(protocol, transport, " << getptr << name << ", error));" << endl;
 	} else {
 		printf ("DO NOT KNOW HOW TO DESERIALIZE FIELD '%s' TYPE '%s'\n",
 				tfield->get_name().c_str(), type_name (type).c_str());
-	}
-
-	// if the type is not required and this is a thrift struct (no prefix),
-	// set the isset variable.  if the type is required, then set the
-	// local variable indicating the value was set, so that we can do    // validation later.
-	if (tfield->get_req() != t_field::T_REQUIRED && prefix != "") {
-		indent(out) << prefix << "__isset_" << tfield->get_name() << suffix << " = TRUE;" << endl;
-	} else if (tfield->get_req() == t_field::T_REQUIRED && prefix != "") {
-		indent(out) << "isset_" << tfield->get_name() << " = TRUE;" << endl;
 	}
 }
 
 void t_c_nano_generator::generate_deserialize_struct(ofstream &out,
 		t_struct *tstruct,
 		string prefix,
-		int error_ret,
 		bool allocate) {
-	string name_uc = tn_to_upper_case(tn_initial_caps_to_underscores(tstruct->get_name()));
+    string type_prefix = tn_type_prefix(tstruct->get_name(), this->nspace_lc);
 	if (tstruct->is_xception()) {
-		out <<
-				indent() << "/* This struct is an exception */" << endl;
-		allocate = true;
+        // TODO: handle exception
 	}
 
-	if (allocate) {
-		out <<
-				indent() << "if ( " << prefix << " != NULL)" << endl <<
-				indent() << "{" << endl;
-		indent_up();
-		out <<
-				indent() << "g_object_unref (" << prefix << ");" << endl;
-		indent_down();
-		out <<
-				indent() << "}" << endl <<
-				indent() << prefix << " = g_object_new (" << this->nspace_uc << "TYPE_" << name_uc << ", NULL);" << endl;
-	}
-	out <<
-			indent() << "if ((ret = thrift_struct_read (THRIFT_STRUCT (" << prefix << "), protocol, error)) < 0)" << endl <<
-			indent() << "{" << endl;
-	indent_up();
-	if (allocate) {
-		indent(out) << "g_object_unref (" << prefix << ");" << endl;
-		if (tstruct->is_xception()) {
-			indent(out) << prefix << " = NULL;" << endl;
-		}
-	}
-	out <<
-			indent() << "return " << error_ret << ";" << endl;
-	indent_down();
-	out <<
-			indent() << "}" << endl <<
-			indent() << "xfer += ret;" << endl;
+    indent(out) << "if( " << prefix << " == NULL ) {" << endl;
+    indent_up();
+    indent(out) << "return_if_fail(ret, " << prefix << " = " << type_prefix << "_create(error));" << endl;
+    indent_down();
+    indent(out) << "}" << endl;
+    indent(out) << "return_if_fail_or_inc(ret, tn_struct_read("<< prefix <<", protocol, transport, error));" << endl;
 }
 
 void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *ttype,
-		string prefix, int error_ret) {
-	scope_up(out);
-
+		string prefix) {
 	if (ttype->is_map()) {
-		out <<
-				indent() << "guint32 size;" << endl <<
-				indent() << "ThriftType key_type;" << endl <<
-				indent() << "ThriftType value_type;" << endl <<
-				endl <<
-				indent() << "/* read the map begin marker */" << endl <<
-				indent() << "if ((ret = thrift_protocol_read_map_begin (protocol, &key_type, &value_type, &size, error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl <<
-				endl;
+        t_map  *tmap = (t_map*) ttype;
+        t_type *tkey = tmap->get_key_type();
+        t_type *tval = tmap->get_val_type();
+		bool key_is_ptr = is_complex_type(tkey) || tkey->is_string();
+		bool val_is_ptr = is_complex_type(tval) || tval->is_string();
+        string kt = type_to_enum(tkey);
+        string vt = type_to_enum(tval);
+		string tkname = type_name(tkey);
+		string tvname = type_name(tval);
+		string ptrkey = !key_is_ptr ? "&" : "";
+		string ptrval = !val_is_ptr ? "&" : "";
 
-		// iterate over map elements
-		out <<
-				indent() << "/* iterate through each of the map's fields */" << endl <<
-				indent() << "guint32 i;" << endl <<
-				indent() << "for (i = 0; i < size; i++)" << endl;
-		scope_up(out);
-		generate_deserialize_map_element (out, (t_map *) ttype, prefix, error_ret);
-		scope_down(out);
-		out << endl;
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_map_begin(protocol, transport, &key_type, &value_type, &cont_size, error));"
+				<< endl << endl;
+
+        // make sure we have some kind of data
+        indent(out) << "if( cont_size > 0 ) {" << endl;
+        indent_up();
+
+        // make sure the key/value types are what we expect
+        indent(out) << "if( key_type == "<< kt << " && value_type == "<< vt <<" ) {" << endl;
+        indent_up();
+
+        // declare locals
+        string klocal = tmp("k");
+        string vlocal = tmp("v");
+        declare_local_variable(out, tkey, klocal);
+        declare_local_variable(out, tval, vlocal);
+
+        // create and init the map
+        indent(out) << "if( " << prefix << " == NULL ) {" << endl;
+        indent_up();
+        indent(out) << "return_if_fail(ret, "<< prefix <<" = tn_map_create(sizeof("<<
+                tkname <<"), sizeof("<< tvname << "), "<< kt <<", "<< vt <<", cont_size, error));" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+        indent(out) << "tn_map_clear("<< prefix << ");" << endl;
+        indent(out) << "return_if_fail(ret, tn_list_ensure_cap("<< prefix <<"->kvs, cont_size, error));" << endl;
+
+		// block io support
+		if(!is_complex_type(tval) && !tval->is_string() && !is_complex_type(tkey) && !tkey->is_string()) {
+			indent(out) << "if( protocol->block_container_io ) {" << endl;
+			indent_up();
+			indent(out) << "buf.pos = 0;" << endl;
+			indent(out) << "buf.buf = "<< prefix <<"->kvs->data;" << endl;
+			indent(out) << "buf.len = cont_size * "<< prefix <<"->kvs->elem_size;" << endl;
+			indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_bytes(protocol, transport, &buf, buf.len, error));" << endl;
+			indent(out) << prefix << "->kvs->elem_count = cont_size;" << endl;
+			indent(out) << "return_if_fail(ret, tn_map_rebuild("<< prefix <<", error));" << endl;
+			indent_down();
+			indent(out) << "} else {" << endl;
+			indent_up();
+		}
+
+        // read the data
+		indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent_up();
+		if( key_is_ptr ) {
+			indent(out) << klocal << " = NULL;" << endl;
+		}
+        t_field fkey (tkey, klocal);
+        generate_deserialize_field (out, &fkey);
+		if( val_is_ptr ) {
+			indent(out) << vlocal << " = NULL;" << endl;
+		}
+        t_field fval (tval, vlocal);
+        generate_deserialize_field (out, &fval);
+        indent(out) << "return_if_fail(ret, tn_map_put("<< prefix <<", " << ptrkey << klocal << ", " << ptrval << vlocal << ", error));" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+
+		// block io support
+		if(!is_complex_type(tval) && !tval->is_string() && !is_complex_type(tkey) && !tkey->is_string()) {
+			indent_down();
+			indent(out) << "}" << endl;
+		}
+
+        // end check types
+        indent_down();
+        indent(out) << "} else {" << endl;
+        indent_up();
+        indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent_up();
+        indent(out) << "return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, key_type, error));" << endl;
+        indent(out) << "return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, value_type, error));" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+
+        // end check size
+        indent_down();
+        indent(out) << "}" << endl;
 
 		// read map end
-		out <<
-				indent() << "/* read the map end marker */" << endl <<
-				indent() << "if ((ret = thrift_protocol_read_map_end (protocol, error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl;
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_map_end(protocol, transport, error));" << endl;
 	} else if (ttype->is_set()) {
-		out <<
-				indent() << "guint32 size;" << endl <<
-				indent() << "ThriftType element_type;" << endl <<
-				indent() << "if ((ret = thrift_protocol_read_set_begin (protocol, &element_type, &size, error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl <<
-				endl;
+        t_set  *tset = (t_set*) ttype;
+        t_type *tval = tset->get_elem_type();
+        string vt = type_to_enum(tval);
+		string tname = type_name(tval);
+		string ptrval = (tval->is_string() || is_complex_type(tval)) ? "*" : "";
+
+        indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_list_begin(protocol, transport, &value_type, &cont_size, error));" << endl;
+
+        // make sure we have some kind of data
+        indent(out) << "if( cont_size > 0 ) {" << endl;
+        indent_up();
+
+        // make sure the key/value types are what we expect
+        indent(out) << "if( value_type == "<< vt <<" ) {" << endl;
+        indent_up();
+
+        // declare locals
+        string vlocal = tmp("v");
+		string ptrvlocal = "*" + vlocal;
+        declare_local_variable(out, tval, ptrvlocal);
+
+        // create and init the list
+        indent(out) << "if( "<< prefix <<" == NULL ) {" << endl;
+        indent_up();
+        indent(out) << "return_if_fail(ret, "<< prefix <<" = tn_list_create(sizeof("<< tname <<"), cont_size, "<< vt <<", error));" << endl;
+        indent(out) << "tn_list_clear("<< prefix <<");" << endl;
+        indent(out) << "return_if_fail(ret, tn_list_ensure_cap("<< prefix <<", cont_size, error));" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+
+		// block io support
+		if(!is_complex_type(tval) && !tval->is_string()) {
+			indent(out) << "if( protocol->block_container_io ) {" << endl;
+			indent_up();
+			indent(out) << "buf.pos = 0;" << endl;
+			indent(out) << "buf.buf = "<< prefix <<"->data;" << endl;
+			indent(out) << "buf.len = cont_size * "<< prefix <<"->elem_size;" << endl;
+			indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_bytes(protocol, transport, &buf, buf.len, error));" << endl;
+			indent(out) << prefix << "->elem_count = cont_size;" << endl;
+			indent_down();
+			indent(out) << "} else {" << endl;
+			indent_up();
+		}
 
 		// iterate over the elements
-		out <<
-				indent() << "/* iterate through the set elements */" << endl <<
-				indent() << "guint32 i;" << endl <<
-				indent() << "for (i = 0; i < size; ++i)" << endl;
+		indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent_up();
+        indent(out) << "return_if_fail(ret, "<< vlocal <<" = tn_list_append("<< prefix <<", error));" << endl;
+        t_field fval (tval, vlocal);
+        generate_deserialize_field(out, &fval, ptrval, "", true);
+        indent_down();
+        indent(out) << "}" << endl;
 
-		scope_up(out);
-		generate_deserialize_set_element (out, (t_set *) ttype, prefix, error_ret);
-		scope_down(out);
+		// block io support
+		if(!is_complex_type(tval) && !tval->is_string()) {
+			indent_down();
+			indent(out) << "}" << endl;
+		}
+
+        // end check type
+        indent_down();
+        indent(out) << "} else {" << endl;
+        indent_up();
+        indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent_up();
+        indent(out) << "return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, value_type, error));" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+
+        // end check size
+        indent_down();
+        indent(out) << "}" << endl;
 
 		// read set end
-		out <<
-				indent() << "if ((ret = thrift_protocol_read_set_end (protocol, error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl <<
-				endl;
+        indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_list_end(protocol, transport, error));" << endl;
 	} else if (ttype->is_list()) {
-		out <<
-				indent() << "guint32 size;" << endl <<
-				indent() << "ThriftType element_type;" << endl <<
-				indent() << "if ((ret = thrift_protocol_read_list_begin (protocol, &element_type, &size, error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl <<
-				endl;
+        t_list *tlist = (t_list*) ttype;
+        t_type *tval  = tlist->get_elem_type();
+        string vt = type_to_enum(tval);
+		string tname = type_name(tval);
+		string ptrval = (tval->is_string() || is_complex_type(tval)) ? "*" : "";
 
-		out <<
-				indent() << "/* iterate through list elements */" << endl <<
-				indent() << "guint32 i;" << endl <<
-				indent() << "for (i = 0; i < size; i++)" << endl;
+        indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_list_begin(protocol, transport, &value_type, &cont_size, error));" << endl;
 
-		scope_up(out);
-		generate_deserialize_list_element (out, (t_list *) ttype, prefix, "i",
-				error_ret);
-		scope_down(out);
+        // make sure we have some kind of data
+        indent(out) << "if( cont_size > 0 ) {" << endl;
+        indent_up();
 
-		out <<
-				indent() << "if ((ret = thrift_protocol_read_list_end (protocol, error)) < 0)" << endl <<
-				indent() << "  return " << error_ret << ";" << endl <<
-				indent() << "xfer += ret;" << endl <<
-				endl;
+        // make sure the key/value types are what we expect
+        indent(out) << "if( value_type == "<< vt <<" ) {" << endl;
+        indent_up();
+
+        // declare locals
+        string vlocal = tmp("v");
+		string ptrvlocal = "*" + vlocal;
+		declare_local_variable(out, tval, ptrvlocal);
+
+        // create and init the list
+        indent(out) << "if( "<< prefix <<" == NULL ) {" << endl;
+        indent_up();
+        indent(out) << "return_if_fail(ret, "<< prefix <<" = tn_list_create(sizeof("<< tname <<"), cont_size, "<< vt <<", error));" << endl;
+        indent(out) << "tn_list_clear("<< prefix <<");" << endl;
+        indent(out) << "return_if_fail(ret, tn_list_ensure_cap("<< prefix <<", cont_size, error));" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+
+		// block io support
+		if(!is_complex_type(tval) && !tval->is_string()) {
+			indent(out) << "if( protocol->block_container_io ) {" << endl;
+			indent_up();
+			indent(out) << "buf.pos = 0;" << endl;
+			indent(out) << "buf.buf = "<< prefix <<"->data;" << endl;
+			indent(out) << "buf.len = cont_size * "<< prefix <<"->elem_size;" << endl;
+			indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_bytes(protocol, transport, &buf, buf.len, error));" << endl;
+			indent(out) << prefix << "->elem_count = cont_size;" << endl;
+			indent_down();
+			indent(out) << "} else {" << endl;
+			indent_up();
+		}
+
+        // iterate over the elements
+        indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent_up();
+        indent(out) << "return_if_fail(ret, "<< vlocal <<" = tn_list_append("<< prefix <<", error));" << endl;
+        t_field fval (tval, vlocal);
+        generate_deserialize_field(out, &fval, ptrval, "", true);
+        indent_down();
+        indent(out) << "}" << endl;
+
+		// block io support
+		if(!is_complex_type(tval) && !tval->is_string()) {
+			indent_down();
+			indent(out) << "}" << endl;
+		}
+
+        // end check type
+        indent_down();
+        indent(out) << "} else {" << endl;
+        indent_up();
+        indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent_up();
+        indent(out) << "return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, value_type, error));" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+        indent_down();
+        indent(out) << "}" << endl;
+
+        // end check size
+        indent_down();
+        indent(out) << "}" << endl;
+
+        // read set end
+        indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_list_end(protocol, transport, error));" << endl;
 	}
-
-	scope_down(out);
 }
 
 void t_c_nano_generator::declare_local_variable(ofstream &out, t_type *ttype, string &name) {
 	string tname = type_name (ttype);
-	string ptr = ttype->is_string() || !ttype->is_base_type() ? "" : "*";
-
-	if (ttype->is_map()) {
-		out <<
-				indent() << tname << ptr << " " << name << " = g_hash_table_new (NULL, NULL);" << endl;
-	} else if (ttype->is_enum()) {
-		out <<
-				indent() << tname << ptr << " " << name << ";" << endl;
-	} else {
-		out <<
-				indent() << tname << ptr << " " << name << (ptr != "" ? " = g_new (" + tname + ", 1)" : " = NULL") << ";" << endl;
-	}
+	string ptr = ttype->is_base_type() && !ttype->is_string() ? " " : " *";
+//    indent(out) << tname << ptr << name << ";" << endl;
+    indent(out) << tname << " " << name << ";" << endl;
 }
 
-
-void t_c_nano_generator::generate_deserialize_map_element(ofstream &out,
-		t_map *tmap,
-		string prefix,
-		int error_ret) {
-	t_type *tkey = tmap->get_key_type();
-	t_type *tval = tmap->get_val_type();
-	string tkey_ptr = tkey->is_string() || !tkey->is_base_type() ? "" : "*";
-	string tval_ptr = tval->is_string() || !tval->is_base_type() ? "" : "*";
-	string keyname = tmp("key");
-	string valname = tmp("val");
-
-	declare_local_variable(out, tkey, keyname);
-	declare_local_variable(out, tval, valname);
-
-	// deserialize the fields of the map element
-	t_field fkey (tkey, tkey_ptr + keyname);
-	generate_deserialize_field (out, &fkey, "", "", error_ret);
-	t_field fval (tval, tval_ptr + valname);
-	generate_deserialize_field (out, &fval, "", "", error_ret);
-
-	indent(out) <<
-			"g_hash_table_insert ((GHashTable *)" << prefix << ", (gpointer) " << keyname << ", (gpointer) " << valname << ");" << endl;
-}
-
-void t_c_nano_generator::generate_deserialize_set_element(ofstream &out,
-		t_set *tset,
-		string prefix,
-		int error_ret) {
-	t_type *telem = tset->get_elem_type();
-	string elem = tmp ("_elem");
-	string telem_ptr = telem->is_string() || !telem->is_base_type() ? "" : "*";
-
-	declare_local_variable(out, telem, elem);
-
-	t_field felem (telem, telem_ptr + elem);
-	generate_deserialize_field (out, &felem, "", "", error_ret);
-
-	indent(out) <<
-			"g_hash_table_insert ((GHashTable *) " << prefix << ", (gpointer) " <<
-			elem << ", (gpointer) 1);" << endl;
-}
-
-void t_c_nano_generator::generate_deserialize_list_element(ofstream &out,
-		t_list *tlist,
-		string prefix,
-		string index,
-		int error_ret) {
-	(void) index;
-	t_type *ttype = tlist->get_elem_type();
-	string elem = tmp ("_elem");
-	string telem_ptr = ttype->is_string() || !ttype->is_base_type() ? "" : "*";
-
-	declare_local_variable(out, ttype, elem);
-
-	t_field felem (ttype, telem_ptr + elem);
-	generate_deserialize_field (out, &felem, "", "", error_ret);
-
-	indent(out);
-
-	if (ttype->is_base_type()) {
-		t_base_type::t_base tbase = ((t_base_type *) ttype)->get_base();
-		switch (tbase) {
-		case t_base_type::TYPE_VOID:
-			throw "compiler error: cannot determine array type";
-		case t_base_type::TYPE_STRING:
-			out << "g_ptr_array_add (" << prefix << ", " << elem << ");" << endl;
-			return;
-		case t_base_type::TYPE_BOOL:
-		case t_base_type::TYPE_BYTE:
-		case t_base_type::TYPE_I16:
-		case t_base_type::TYPE_I32:
-		case t_base_type::TYPE_I64:
-		case t_base_type::TYPE_DOUBLE:
-			out << "g_array_append_vals (" << prefix << ", " << elem << ", 1);" << endl;
-			return;
-		default:
-			throw "compiler error: no array info for type";
-		}
-	}
-	out << "g_ptr_array_add (" << prefix << ", " << elem << ");" << endl;
-}
-
-string t_c_nano_generator::generate_free_func_from_type (t_type * ttype) {
-	if (ttype == NULL)
-		return "NULL";
-
-	if (ttype->is_base_type()) {
-		t_base_type::t_base tbase = ((t_base_type *) ttype)->get_base();
-		switch (tbase) {
-		case t_base_type::TYPE_VOID:
-			throw "compiler error: cannot determine hash type";
-			break;
-		case t_base_type::TYPE_BOOL:
-		case t_base_type::TYPE_BYTE:
-		case t_base_type::TYPE_I16:
-		case t_base_type::TYPE_I32:
-		case t_base_type::TYPE_I64:
-		case t_base_type::TYPE_DOUBLE:
-			return "NULL";
-		case t_base_type::TYPE_STRING:
-			if (((t_base_type *) ttype)->is_binary()) {
-				return "tn_buffer_destroy";
-			}
-			return "mowgli_string_destroy";
-		default:
-			throw "compiler error: no hash table info for type";
-		}
-	} else if (ttype->is_enum()) {
-		return "NULL";
-	} else if (ttype->is_map() || ttype->is_set()) {
-		return "NULL;//(GDestroyNotify) g_hash_table_destroy";
-	} else if (ttype->is_struct()) {
-		return "NULL;//type_name_destroy";
-	} else if (ttype->is_list()) {
-		t_type *etype = ((t_list *) ttype)->get_elem_type();
-		if (etype->is_base_type()) {
-			t_base_type::t_base tbase = ((t_base_type *) etype)->get_base();
-			switch (tbase) {
-			case t_base_type::TYPE_VOID:
-				throw "compiler error: cannot determine array type";
-				break;
-			case t_base_type::TYPE_BOOL:
-			case t_base_type::TYPE_BYTE:
-			case t_base_type::TYPE_I16:
-			case t_base_type::TYPE_I32:
-			case t_base_type::TYPE_I64:
-			case t_base_type::TYPE_DOUBLE:
-				return "(GDestroyNotify) g_array_unref";
-			case t_base_type::TYPE_STRING:
-				return "(GDestroyNotify) g_ptr_array_unref";
-			default:
-				throw "compiler error: no array info for type";
-			}
-		} else if (etype->is_container() || etype->is_struct()) {
-			return "(GDestroyNotify) g_ptr_array_unref";;
-		} else if (etype->is_enum()) {
-			return "(GDestroyNotify) g_array_unref";
-		}
-		printf("Type not expected inside the array: %s\n", etype->get_name().c_str());
-		throw "Type not expected inside array" ;
-	} else if (ttype->is_typedef()) {
-		return generate_free_func_from_type(((t_typedef *) ttype)->get_type());
-	}
-	printf("Type not expected: %s\n", ttype->get_name().c_str());
-	throw "Type not expected";
-}
-
-string t_c_nano_generator::generate_hash_func_from_type (t_type * ttype) {
-	if (ttype == NULL)
-		return "NULL";
-
-	if (ttype->is_base_type()) {
-		t_base_type::t_base tbase = ((t_base_type *) ttype)->get_base();
-		switch (tbase) {
-		case t_base_type::TYPE_VOID:
-			throw "compiler error: cannot determine hash type";
-			break;
-		case t_base_type::TYPE_BOOL:
-		case t_base_type::TYPE_BYTE:
-		case t_base_type::TYPE_I16:
-		case t_base_type::TYPE_I32:
-			return "g_int_hash";
-		case t_base_type::TYPE_I64:
-			return "g_int64_hash";
-		case t_base_type::TYPE_DOUBLE:
-			return "g_double_hash";
-		case t_base_type::TYPE_STRING:
-			return "g_str_hash";
-		default:
-			throw "compiler error: no hash table info for type";
-		}
-	} else if (ttype->is_enum()) {
-		return "g_direct_hash";
-	} else if (ttype->is_container() || ttype->is_struct()) {
-		return "g_direct_hash";
-	} else if (ttype->is_typedef()) {
-		return generate_hash_func_from_type(((t_typedef *) ttype)->get_type());
-	}
-	printf("Type not expected: %s\n", ttype->get_name().c_str());
-	throw "Type not expected";
-}
-
-string t_c_nano_generator::generate_cmp_func_from_type (t_type * ttype) {
-	if (ttype == NULL)
-		return "NULL";
-
-	if (ttype->is_base_type()) {
-		t_base_type::t_base tbase = ((t_base_type *) ttype)->get_base();
-		switch (tbase) {
-		case t_base_type::TYPE_VOID:
-			throw "compiler error: cannot determine hash type";
-			break;
-		case t_base_type::TYPE_BOOL:
-		case t_base_type::TYPE_BYTE:
-		case t_base_type::TYPE_I16:
-		case t_base_type::TYPE_I32:
-			return "g_int_equal";
-		case t_base_type::TYPE_I64:
-			return "g_int64_equal";
-		case t_base_type::TYPE_DOUBLE:
-			return "g_double_equal";
-		case t_base_type::TYPE_STRING:
-			return "g_str_equal";
-		default:
-			throw "compiler error: no hash table info for type";
-		}
-	} else if (ttype->is_enum()) {
-		return "NULL";
-	} else if (ttype->is_container() || ttype->is_struct()) {
-		return "g_direct_equal";
-	} else if (ttype->is_typedef()) {
-		return generate_cmp_func_from_type(((t_typedef *) ttype)->get_type());
-	}
-	printf("Type not expected: %s\n", ttype->get_name().c_str());
-	throw "Type not expected";
-}
-
-string t_c_nano_generator::generate_new_hash_from_type (t_type * key, t_type *value) {
-	string hash_func = generate_hash_func_from_type(key);
-	string cmp_func = generate_cmp_func_from_type(key);
-	string key_free_func = generate_free_func_from_type(key);
-	string value_free_func = generate_free_func_from_type(value);
-
-	return "g_hash_table_new_full (" + hash_func + ", " + cmp_func + ", " +
-			key_free_func + ", " + value_free_func + ");";
-}
-
-string t_c_nano_generator::generate_new_array_from_type(t_type * ttype) {
-	if (ttype->is_base_type()) {
-		t_base_type::t_base tbase = ((t_base_type *) ttype)->get_base();
-		switch (tbase) {
-		case t_base_type::TYPE_VOID:
-			throw "compiler error: cannot determine array type";
-			break;
-		case t_base_type::TYPE_BOOL:
-			return "g_array_new (0, 1, sizeof (gboolean));";
-		case t_base_type::TYPE_BYTE:
-			return "g_array_new (0, 1, sizeof (gint8));";
-		case t_base_type::TYPE_I16:
-			return "g_array_new (0, 1, sizeof (gint16));";
-		case t_base_type::TYPE_I32:
-			return "g_array_new (0, 1, sizeof (gint32));";
-		case t_base_type::TYPE_I64:
-			return "g_array_new (0, 1, sizeof (gint64));";
-		case t_base_type::TYPE_DOUBLE:
-			return "g_array_new (0, 1, sizeof (gdouble));";
-		case t_base_type::TYPE_STRING:
-			return "g_ptr_array_new_with_free_func (g_free);";
-		default:
-			throw "compiler error: no array info for type";
-		}
-	} else if (ttype->is_enum()) {
-		return "g_array_new (0, 1, sizeof (gint32));";
-	} else {
-		string free_func = generate_free_func_from_type(ttype);
-		return "g_ptr_array_new_with_free_func (" + free_func + ");";
-	}
-
-	return "g_ptr_array_new();";
-}
-
-
-/***************************************
- * UTILITY FUNCTIONS                   *
- ***************************************/
-
-/**
- * Upper case a string.  Wraps boost's string utility.
- */
-string tn_to_upper_case(string name) {
-	string s (name);
-	std::transform (s.begin(), s.end(), s.begin(), ::toupper);
-	return s;
-	//  return boost::to_upper_copy (name);
-}
-
-/**
- * Lower case a string.  Wraps boost's string utility.
- */
-string tn_to_lower_case(string name) {
-	string s (name);
-	std::transform (s.begin(), s.end(), s.begin(), ::tolower);
-	return s;
-	//  return boost::to_lower_copy (name);
-}
-
-/**
- * Makes a string friendly to C code standards by lowercasing and adding
- * underscores, with the exception of the first character.  For example:
- *
- * Input: "ZomgCamelCase"
- * Output: "zomg_camel_case"
- */
-string tn_initial_caps_to_underscores(string name) {
-	string ret;
-	const char *tmp = name.c_str();
-	int pos = 0;
-
-	/* the first character isn't underscored if uppercase, just lowercased */
-	ret += tolower (tmp[pos]);
-	pos++;
-	for (unsigned int i = pos; i < name.length(); i++) {
-		char lc = tolower (tmp[i]);
-		if (lc != tmp[i]) {
-			ret += '_';
-		}
-		ret += lc;
-	}
-
-	return ret;
-}
 
 /* register this generator with the main program */
 THRIFT_REGISTER_GENERATOR(c_nano, "C, using thrift nano lib", "")
