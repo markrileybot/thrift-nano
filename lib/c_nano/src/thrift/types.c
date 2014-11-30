@@ -1,7 +1,6 @@
 #include <thrift/types.h>
 #include <thrift/mem.h>
 #include <string.h>
-#include "types.h"
 
 #define HASH_PRIME 37
 #define HASH_START 17
@@ -240,9 +239,9 @@ tn_map_destroy(tn_object_t *obj)
     tn_free(map);
 }
 static int32_t
-tn_map_hash(tn_map_t *map, char *key)
+tn_map_hash(tn_map_t *map, void *key)
 {
-    tn_buffer_t *k;
+    tn_buffer_t **k;
     char *buf;
 	size_t i, len = 0;
 	int32_t hash = HASH_START;
@@ -251,10 +250,11 @@ tn_map_hash(tn_map_t *map, char *key)
         case T_STRING:
         case T_UTF8:
         case T_UTF16:
-            k = (tn_buffer_t*) key;
-            len = k->pos;
-            buf = k->buf;
-            for( i = 0; i < len; i++ ) hash ^= buf[i] * HASH_PRIME;
+            k = (tn_buffer_t**) key;
+			len = (*k)->pos;
+			buf = (*k)->buf;
+			for( i = 0; i < len; i++ ) hash ^= (buf[i] * HASH_PRIME);
+			break;
         default:
             switch (map->key_size)
             {
@@ -270,6 +270,8 @@ tn_map_hash(tn_map_t *map, char *key)
                 case 1:
                     hash = (int32_t) *((int8_t *) key);
                     break;
+                default:
+                    break;
             }
             break;
     }
@@ -277,23 +279,29 @@ tn_map_hash(tn_map_t *map, char *key)
 	// however, using & requires map->entry_cap to be a 2^k to ensure a
 	// good distribution.  I like the % version better because its simpler
 	// so we'll stick with that until I test on a small computer
+
+    // slightly faster version:
 	// return HASH2(hash) & (map->entry_cap - 1);
+
+    // slightly slower version:
 	return hash % (int32_t)map->entry_cap;
 }
 static bool
 tn_map_eq(tn_map_t *map, void *key0, void *key1)
 {
-    tn_buffer_t *k0, *k1;
+    tn_buffer_t **k0, **k1;
     size_t len = 0;
     switch(map->key_type)
     {
         case T_STRING:
         case T_UTF8:
         case T_UTF16:
-            k0 = (tn_buffer_t *) key0;
-            k1 = (tn_buffer_t *) key0;
-            len = MIN(k0->pos, k1->pos);
-            return memcmp(k0->buf, k1->buf, len) == 0 ? true : false;
+            k0 = (tn_buffer_t **) key0;
+            k1 = (tn_buffer_t **) key1;
+            if((*k0)->pos != (*k1)->pos) return false;
+            return memcmp((*k0)->buf, (*k1)->buf, (*k1)->pos) == 0 ? true : false;
+        default:
+            break;
     }
 	return memcmp(key0, key1, map->key_size) == 0 ? true : false;
 }
@@ -486,6 +494,9 @@ tn_map_clear(tn_map_t *map)
 tn_map_t*
 tn_map_init(tn_map_t *map, size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count, tn_error_t *error)
 {
+    // ensures no growth for elem_count elements
+    elem_count = (size_t)(elem_count * 2);
+
     map->parent.tn_destroy = &tn_map_destroy;
 	map->entry_cap = elem_count;
     map->key_size = key_size;
