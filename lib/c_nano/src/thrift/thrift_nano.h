@@ -12,6 +12,7 @@ extern "C" {
 #include <thrift/transport.h>
 #include <thrift/protocol.h>
 #include <thrift/struct.h>
+#include <thrift/mem.h>
 
 #ifdef __cplusplus
 }
