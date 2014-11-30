@@ -17,6 +17,15 @@
 # define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
+/* Macros for strings */
+#define tn_buffer_str(var, str, size, err) \
+    var = tn_buffer_create(size, err); \
+    tn_buffer_write(var, str, size);
+
+#define tn_buffer_strlit(var, str, err) \
+    tn_buffer_str(var, str, sizeof(str) - 1, err)
+
+
 typedef enum
 {
     T_ERR_OK                        = 0,
