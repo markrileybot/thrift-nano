@@ -1,5 +1,6 @@
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
+include_directories(${PROJECT_SOURCE_DIR}/lib/c_nano/src/test/gen-c_nano)
 
 set(SOURCES
   thrift/mem.c
@@ -12,13 +13,13 @@ set(SOURCES
 
 set(TEST_SOURCES
 	${SOURCES}
-	test/example_gen.c
+	test/gen-c_nano/tn_package_name_test_types.c
 	test/test.c
 )
 
 set(TEST_SERIAL_SOURCES
   ${SOURCES}
-  test/example_gen.c
+  test/gen-c_nano/tn_package_name_test_types.c
   test/test_serial.c
 )
 

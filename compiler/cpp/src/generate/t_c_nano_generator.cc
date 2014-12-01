@@ -266,6 +266,9 @@ void t_c_nano_generator::init_generator() {
 	// include the types file
 	f_types_impl_ << endl << "#include \"" << this->nspace_lc << program_name_u << "_types.h\"" << endl;
 
+	// make sure we can be included in c++
+	f_types_ << "#ifdef __cplusplus" << endl << "extern \"C\" {" << endl << "#endif" << endl;
+
 	f_types_ << "/* begin types */" << endl << endl;
 }
 
@@ -275,6 +278,15 @@ void t_c_nano_generator::init_generator() {
 void t_c_nano_generator::close_generator() {
 	string program_name_uc = tn_to_upper_case
 			(tn_initial_caps_to_underscores(program_name_));
+
+	// package level init/fini
+	f_types_ << "void " << this->nspace_lc << "init();" << endl;
+	f_types_ << "void " << this->nspace_lc << "fini();" << endl;
+	f_types_impl_ << "void " << this->nspace_lc << "init() {}" << endl;
+	f_types_impl_ << "void " << this->nspace_lc << "fini() {}" << endl;
+
+	// end cpp include
+	f_types_ << "#ifdef __cplusplus" << endl << "}" << endl << "#endif" << endl;
 
 	/* end the header inclusion guard */
 	f_types_ << "#endif /* " << this->nspace_uc << program_name_uc << "_TYPES_H */" << endl;

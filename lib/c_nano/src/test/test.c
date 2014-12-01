@@ -1,6 +1,5 @@
 
-#include <test/example_gen.h>
-//#include <test/sigma_sensor_sensor_types.h>
+#include <tn_package_name_test_types.h>
 #include <sys/time.h>
 
 #define CALLS 1000000
@@ -22,50 +21,6 @@ tn_package_name_structa_t *read_struct;
 tn_transport_t *memory_transport;
 tn_protocol_t *compact_protocol;
 tn_protocol_t *binary_protocol;
-
-//int test_gen() {
-//	tn_error_t e = T_ERR_OK;
-//	tn_error_t *error = &e;
-//	tn_buffer_t *key;
-//	tn_buffer_t *val;
-//	int i = 0;
-//
-//	sigma_sensor_get_sensors_response_t *respw = sigma_sensor_get_sensors_response_create(error);
-//	sigma_sensor_get_sensors_response_t *respr = sigma_sensor_get_sensors_response_create(error);
-//
-//	respw->sensors = tn_list_create(sizeof(sigma_sensor_sensor_t *), 10, T_STRUCT, error);
-//	sigma_sensor_sensor_t **next;
-//	for(i = 0; i < 10; i++ ) {
-//		next = tn_list_append(respw->sensors, error);
-//		(*next) = sigma_sensor_sensor_create(error);
-//		(*next)->id = (int16_t)i;
-//		(*next)->dataFormat = SIGMA_SENSOR_DATA_FORMAT_TUPLE;
-//		tn_buffer_strlit((*next)->firmwareVersion, "1.0.1", error);
-//		tn_buffer_strlit((*next)->make, "MyMake", error);
-//		tn_buffer_strlit((*next)->model, "MyModel", error);
-//		tn_buffer_strlit((*next)->serial, "ABCDEFG", error);
-//
-//		(*next)->properties = tn_map_create(sizeof(tn_buffer_t*), sizeof(tn_buffer_t*), T_STRING, T_STRING, 2, error);
-//		tn_buffer_strlit(key, "prop1", error);
-//		tn_buffer_strlit(val, "val1", error);
-//		tn_map_put2((*next)->properties, &key, &val, error);
-//		tn_buffer_strlit(key, "prop2", error);
-//		tn_buffer_strlit(val, "val2", error);
-//		tn_map_put2((*next)->properties, &key, &val, error);
-//	}
-//
-//	printf("Writing struct...\n");
-//	size_t bytesw = tn_struct_write(respw, compact_protocol, memory_transport, error);
-//	printf("Wrote %d\n", bytesw);
-//	memory_transport->tn_reset(memory_transport);
-//	printf("Reading struct...\n");
-//	size_t bytesr = tn_struct_read(respr, compact_protocol, memory_transport, error);
-//
-//	printf("Read/Write %d/%d \n", bytesr, bytesw);
-//	tn_object_destroy(respw);
-//	tn_object_destroy(respr);
-//	return e;
-//}
 
 int test_map()
 {
@@ -405,7 +360,7 @@ int main(int argc, char** argv)
     tn_error_t error = T_ERR_OK;
     int res = 0;
 	run_test(test_init, res);
-//	run_test(test_gen, res);
+
 	run_test(test_list, res);
 	run_test(test_map, res);
 

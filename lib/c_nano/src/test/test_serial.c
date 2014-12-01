@@ -1,5 +1,5 @@
 
-#include <test/example_gen.h>
+#include <tn_package_name_test_types.h>
 #include <termios.h> /* POSIX terminal control definitions */
 
 #define CALLS 1000000
