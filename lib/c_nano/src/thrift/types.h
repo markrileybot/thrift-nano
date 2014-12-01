@@ -142,11 +142,14 @@ typedef struct
     tn_type_t key_type;
     tn_type_t val_type;
 } tn_map_t;
-tn_map_elem_t *tn_map_put(tn_map_t *map, void *key, void *value, tn_error_t *error);
+tn_map_elem_t *tn_map_append(tn_map_t *map, tn_error_t *error);
+tn_map_elem_t *tn_map_put(tn_map_t *map, tn_map_elem_t *elem);
+tn_map_elem_t *tn_map_put2(tn_map_t *map, void *key, void *val, tn_error_t *error);
 tn_map_elem_t *tn_map_find(tn_map_t *map, void *key);
 tn_map_elem_t *tn_map_get(tn_map_t *map, size_t index);
 void tn_map_remove(tn_map_t *map, void *key);
 void tn_map_clear(tn_map_t *map);
+void tn_map_ensure_cap(tn_map_t *map, size_t count, tn_error_t *error);
 void tn_map_rebuild(tn_map_t *map, tn_error_t *error);
 tn_map_t* tn_map_init(tn_map_t *list, size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count, tn_error_t *error);
 tn_map_t* tn_map_create(size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count, tn_error_t *error);
@@ -169,5 +172,14 @@ size_t tn_buffer_ensure_cap(tn_buffer_t *mem, size_t len);
 void tn_buffer_reset(tn_buffer_t *self);
 tn_buffer_t* tn_buffer_init(tn_buffer_t *self, size_t bufferSize, tn_error_t *error);
 tn_buffer_t* tn_buffer_create(size_t bufferSize, tn_error_t *error);
+
+/**
+ * Generate a hash for a bit of thrift data.  If data is a complex type
+ * (struct, map, list, set, string, binary) this function assumes that
+ * data points to a pointer so don't forget to pass a &.  I did this because
+ * it makes recursion a little simpler when dealing with containers and
+ * main use of this function is map/set support.
+ */
+int32_t tn_hash(void *data, tn_type_t type, size_t size);
 
 #endif

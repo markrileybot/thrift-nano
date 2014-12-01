@@ -98,7 +98,7 @@ serial_create_structa()
 
 	for( i = 0; i < 20; i++ )
 	{
-		tn_map_put(s->mapprop, &i, &i, &error);
+		tn_map_put2(s->mapprop, &i, &i, &error);
 	}
 	return s;
 }

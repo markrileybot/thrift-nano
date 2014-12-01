@@ -3,7 +3,6 @@
 // Here's what I think the generated code should look like:
 
 #include <test/example_gen.h>
-#include <thrift/mem.h>
 
 // struct b
 static size_t
@@ -320,7 +319,8 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
 						if( size > 0 )
 						{
 							int16_t k, v;
-							if( self->mapprop == NULL ) self->mapprop = tn_map_create(sizeof(int16_t), sizeof(int16_t), T_I16, T_I16, size, error);
+							if( self->mapprop == NULL )
+                                self->mapprop = tn_map_create(sizeof(int16_t), sizeof(int16_t), T_I16, T_I16, size, error);
                             if( *error != 0 ) return ret;
                             tn_map_clear(self->mapprop);
                             tn_list_ensure_cap(self->mapprop->kvs, size, error);
@@ -340,7 +340,7 @@ tn_package_name_structa_read(void *data, tn_protocol_t *protocol, tn_transport_t
                                 {
                                     return_if_fail_or_inc(ret, protocol->tn_read_int16(protocol, transport, &k, error));
                                     return_if_fail_or_inc(ret, protocol->tn_read_int16(protocol, transport, &v, error));
-                                    tn_map_put(self->mapprop, &k, &v, error);
+                                    tn_map_put2(self->mapprop, &k, &v, error);
                                     if( *error != 0 ) return ret;
                                 }
                             }

@@ -1,5 +1,6 @@
 
 #include <test/example_gen.h>
+//#include <test/sigma_sensor_sensor_types.h>
 #include <sys/time.h>
 
 #define CALLS 1000000
@@ -22,42 +23,89 @@ tn_transport_t *memory_transport;
 tn_protocol_t *compact_protocol;
 tn_protocol_t *binary_protocol;
 
-int
-test_map()
+//int test_gen() {
+//	tn_error_t e = T_ERR_OK;
+//	tn_error_t *error = &e;
+//	tn_buffer_t *key;
+//	tn_buffer_t *val;
+//	int i = 0;
+//
+//	sigma_sensor_get_sensors_response_t *respw = sigma_sensor_get_sensors_response_create(error);
+//	sigma_sensor_get_sensors_response_t *respr = sigma_sensor_get_sensors_response_create(error);
+//
+//	respw->sensors = tn_list_create(sizeof(sigma_sensor_sensor_t *), 10, T_STRUCT, error);
+//	sigma_sensor_sensor_t **next;
+//	for(i = 0; i < 10; i++ ) {
+//		next = tn_list_append(respw->sensors, error);
+//		(*next) = sigma_sensor_sensor_create(error);
+//		(*next)->id = (int16_t)i;
+//		(*next)->dataFormat = SIGMA_SENSOR_DATA_FORMAT_TUPLE;
+//		tn_buffer_strlit((*next)->firmwareVersion, "1.0.1", error);
+//		tn_buffer_strlit((*next)->make, "MyMake", error);
+//		tn_buffer_strlit((*next)->model, "MyModel", error);
+//		tn_buffer_strlit((*next)->serial, "ABCDEFG", error);
+//
+//		(*next)->properties = tn_map_create(sizeof(tn_buffer_t*), sizeof(tn_buffer_t*), T_STRING, T_STRING, 2, error);
+//		tn_buffer_strlit(key, "prop1", error);
+//		tn_buffer_strlit(val, "val1", error);
+//		tn_map_put2((*next)->properties, &key, &val, error);
+//		tn_buffer_strlit(key, "prop2", error);
+//		tn_buffer_strlit(val, "val2", error);
+//		tn_map_put2((*next)->properties, &key, &val, error);
+//	}
+//
+//	printf("Writing struct...\n");
+//	size_t bytesw = tn_struct_write(respw, compact_protocol, memory_transport, error);
+//	printf("Wrote %d\n", bytesw);
+//	memory_transport->tn_reset(memory_transport);
+//	printf("Reading struct...\n");
+//	size_t bytesr = tn_struct_read(respr, compact_protocol, memory_transport, error);
+//
+//	printf("Read/Write %d/%d \n", bytesr, bytesw);
+//	tn_object_destroy(respw);
+//	tn_object_destroy(respr);
+//	return e;
+//}
+
+int test_map()
 {
     tn_error_t error = T_ERR_OK;
 	tn_map_t *map;
 	printf("Test map start\n");
-    map = tn_map_create(sizeof(int32_t), sizeof(int32_t), T_I32, T_I32, CALLS*2, &error);
+    map = tn_map_create(sizeof(int32_t), sizeof(int32_t), T_I32, T_I32, CALLS, &error);
     if(error != 0)
 	{
 		printf("Failed to create map.  %s.\n", tn_error_str(error));
 		return -1;
 	}
 
+	tn_map_elem_t *e;
 	int32_t v, i;
 	size_t max = 100;
 	v = max;
+	printf(" === Fill to %d\n", max);
 	for( v = max, i = 0, v = max; i < max; i++, v-- )
 	{
-		tn_map_put(map, &i, &v, &error);
+		tn_map_put2(map, &i, &v, &error);
 	}
 	printf("Map capacity is %d\n", map->entry_cap);
 	printf("Map size is %d\n", map->kvs->elem_count);
 
+	printf(" === Replace to %d\n", max);
 	for( i = 0, v = 0; i < max; i++, v++ )
 	{
-		tn_map_put(map, &i, &v, &error);
+		tn_map_put2(map, &i, &v, &error);
 	}
 	printf("Map capacity is %d\n", map->entry_cap);
 	printf("Map size is %d\n", map->kvs->elem_count);
 
 	struct timeval start, end;
 
+	printf(" === Fill to %d\n", CALLS);
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-		tn_map_put(map, &i, &i, &error);
+		tn_map_put2(map, &i, &i, &error);
 	}
 	gettimeofday(&end, NULL);
 	double total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
@@ -66,11 +114,11 @@ test_map()
 	printf("Map size is %d\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
-
+	printf(" === Replace to %d\n", CALLS);
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-		tn_map_put(map, &i, &i, &error);
+		tn_map_put2(map, &i, &i, &error);
 	}
 	gettimeofday(&end, NULL);
 	total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
@@ -79,7 +127,7 @@ test_map()
 	printf("Map size is %d\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
-	tn_map_elem_t *e;
+	printf(" === Find %d\n", CALLS);
 	int32_t *vp;
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
@@ -95,7 +143,7 @@ test_map()
 	printf("Map size is %d\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
-
+	printf(" === Remove %d\n", 10);
 	gettimeofday(&start, NULL);
 	for( i = 0; i < 10; i++ )
 	{
@@ -243,7 +291,7 @@ create_structa()
 
 	for( i = 0; i < 20; i++ )
 	{
-		tn_map_put(s->mapprop, &i, &i, &error);
+		tn_map_put2(s->mapprop, &i, &i, &error);
 	}
 	return s;
 }
@@ -357,6 +405,7 @@ int main(int argc, char** argv)
     tn_error_t error = T_ERR_OK;
     int res = 0;
 	run_test(test_init, res);
+//	run_test(test_gen, res);
 	run_test(test_list, res);
 	run_test(test_map, res);
 

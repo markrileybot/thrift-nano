@@ -241,40 +241,7 @@ tn_map_destroy(tn_object_t *obj)
 static int32_t
 tn_map_hash(tn_map_t *map, void *key)
 {
-    tn_buffer_t **k;
-    char *buf;
-	size_t i, len = 0;
-	int32_t hash = HASH_START;
-    switch(map->key_type)
-    {
-        case T_STRING:
-        case T_UTF8:
-        case T_UTF16:
-            k = (tn_buffer_t**) key;
-			len = (*k)->pos;
-			buf = (*k)->buf;
-			for( i = 0; i < len; i++ ) hash ^= (buf[i] * HASH_PRIME);
-			break;
-        default:
-            switch (map->key_size)
-            {
-                case 8:
-                    hash = (int32_t) (*((int64_t *) key) ^ (*((int64_t *) key) >> 32));
-                    break;
-                case 4:
-                    hash = (int32_t) *((int32_t *) key);
-                    break;
-                case 2:
-                    hash = (int32_t) *((int16_t *) key);
-                    break;
-                case 1:
-                    hash = (int32_t) *((int8_t *) key);
-                    break;
-                default:
-                    break;
-            }
-            break;
-    }
+	int32_t hash = tn_hash(key, map->key_type, map->key_size);
 	//TODO: % is about 2x slower on my laptop than & (which makes sense).
 	// however, using & requires map->entry_cap to be a 2^k to ensure a
 	// good distribution.  I like the % version better because its simpler
@@ -290,7 +257,6 @@ static bool
 tn_map_eq(tn_map_t *map, void *key0, void *key1)
 {
     tn_buffer_t **k0, **k1;
-    size_t len = 0;
     switch(map->key_type)
     {
         case T_STRING:
@@ -374,11 +340,10 @@ tn_map_rebuild(tn_map_t *map, tn_error_t *error)
 	}
 }
 static void
-tn_map_grow(tn_map_t *map, tn_error_t *error)
+tn_map_grow(tn_map_t *map, size_t newcap, tn_error_t *error)
 {
 	// create the newer larger entries array.  we can dump the old array
 	// cause we have the data in the key/value lists
-	size_t newcap = map->entry_cap * 2;
 	tn_free(map->entries);
 	map->entry_cap = newcap;
 	map->entries = tn_alloc_array(sizeof(tn_map_elem_t*), newcap, error);
@@ -394,60 +359,77 @@ tn_map_grow(tn_map_t *map, tn_error_t *error)
 	// rebuild the map from the key/value lists
 	tn_map_rebuild(map, error);
 }
-
 tn_map_elem_t *
-tn_map_put(tn_map_t *map, void *key, void *value, tn_error_t *error)
+tn_map_append(tn_map_t *map, tn_error_t *error)
 {
-	tn_map_elem_t *e, *p;
-    e = p = NULL;
-	int32_t h = tn_map_hash(map, key);
+	tn_map_elem_t *e;
+	if (map->kvs->elem_count >= map->entry_cap * .75f)
+	{
+		// double capacity if supported
+		tn_map_grow(map, map->entry_cap * 2, error);
+		if( *error != 0 ) return NULL;
+	}
+	e = tn_list_append(map->elems, error);
+	if( *error == 0 )
+	{
+		e->key = tn_list_append(map->kvs, error);
+		e->value = e->key + map->key_size;
+		e->index = map->elems->elem_count - 1;
+		e->next = NULL;
+	}
+	return e;
+}
+tn_map_elem_t *
+tn_map_put(tn_map_t *map, tn_map_elem_t *elem)
+{
+	tn_map_elem_t *p = NULL;
+	int32_t h = tn_map_hash(map, elem->key);
 
 	p = map->entries[h];
-	e = p;
-	while( e != NULL )
+	while( p != NULL )
 	{
-		if( tn_map_eq(map, key, e->key) )
+		if( elem == p )
 		{
-			memcpy(e->value, value, map->val_size);
-			break;
+			return NULL;
+		}
+		else if (tn_map_eq(map, elem->key, p->key))
+		{
+			memcpy(p->value, elem->value, map->val_size);
+			tn_list_remove(map->kvs, elem->index);
+			tn_list_remove(map->elems, elem->index);
+			return elem;
+		}
+		else if ( p->next != NULL )
+		{
+			p = p->next;
 		}
 		else
 		{
-			p = e;
-			e = e->next;
+			p->next = elem;
+			return NULL;
 		}
 	}
+
+	map->entries[h] = elem;
+	return NULL;
+}
+tn_map_elem_t *
+tn_map_put2(tn_map_t *map, void *key, void *val, tn_error_t *error)
+{
+	tn_map_elem_t *e = tn_map_find(map, key);
 	if( e == NULL )
 	{
-		e = tn_list_append(map->elems, error);
-        if( *error == 0 )
-        {
-            e->key = tn_list_append(map->kvs, error);
-            e->value = e->key + map->key_size;
-            e->index = map->elems->elem_count - 1;
-            e->next = NULL;
-
-            memcpy(e->key, key, map->key_size);
-            memcpy(e->value, value, map->val_size);
-
-            if (p != NULL)
-            {
-                p->next = e;
-            }
-            else
-            {
-                map->entries[h] = e;
-            }
-
-            if (map->kvs->elem_count >= map->entry_cap * .75f)
-            {
-                // double capacity if supported
-                tn_map_grow(map, error);
-            }
-        }
+		e = tn_map_append(map, error);
+		if( *error != 0 ) return NULL;
+		memcpy(e->key, key, map->key_size);
+		memcpy(e->value, val, map->val_size);
+		return tn_map_put(map, e);
 	}
-
-	return e;
+	else
+	{
+		memcpy(e->value, val, map->val_size);
+	}
+	return NULL;
 }
 tn_map_elem_t *
 tn_map_find(tn_map_t *map, void *key)
@@ -490,6 +472,14 @@ tn_map_clear(tn_map_t *map)
 	memset(map->entries, 0, sizeof(tn_map_elem_t*) * map->entry_cap);
 	tn_list_clear(map->elems);
 	tn_list_clear(map->kvs);
+}
+void
+tn_map_ensure_cap(tn_map_t *map, size_t count, tn_error_t *error)
+{
+	if( map->entry_cap < count )
+	{
+		tn_map_grow(map, count * 2, error);
+	}
 }
 tn_map_t*
 tn_map_init(tn_map_t *map, size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t value_type, size_t elem_count, tn_error_t *error)
@@ -535,4 +525,60 @@ tn_map_create(size_t key_size, size_t value_size, tn_type_t key_type, tn_type_t 
 	return tn_map_init(map, key_size, value_size, key_type, value_type, elem_count, error);//tn_map_topow2(elem_count));
 }
 
-
+int32_t
+tn_hash(void *data, tn_type_t type, size_t size)
+{
+	tn_list_t **kl;
+	tn_map_t **km;
+	tn_buffer_t **k;
+	tn_map_elem_t *e;
+	char *buf;
+	size_t i, len = 0;
+	int32_t hash = HASH_START;
+	switch(type)
+	{
+		case T_STRING:
+		case T_UTF8:
+		case T_UTF16:
+			k = (tn_buffer_t **) data;
+			len = (*k)->pos;
+			buf = (*k)->buf;
+			for( i = 0; i < len; i++ ) hash ^= (buf[i] * HASH_PRIME);
+			return hash;
+		case T_LIST:
+		case T_SET:
+			kl = (tn_list_t **) data;
+			len = (*kl)->elem_count;
+			size = (*kl)->elem_size;
+			type = (*kl)->type;
+			for( i = 0; i < len; i++ ) hash ^= tn_hash(tn_list_get(*kl, i), type, size) * HASH_PRIME;
+			return hash;
+		case T_MAP:
+			km = (tn_map_t **) data;
+			len = (*km)->kvs->elem_count;
+			for( i = 0; i < len; i++ )
+			{
+				e = tn_map_get(*km, i);
+				size = (*km)->key_size;
+				type = (*km)->key_type;
+				hash ^= tn_hash(e->key, type, size) * HASH_PRIME;
+				size = (*km)->val_size;
+				type = (*km)->val_type;
+				hash ^= tn_hash(e->value, type, size) * HASH_PRIME;
+			}
+			return hash;
+		case T_STRUCT:
+			// TODO: generate struct hash function
+		default:
+			switch (size)
+			{
+				case 8: return (int32_t) (*((int64_t *) data) ^ (*((int64_t *) data) >> 32));
+				case 4: return (int32_t) *((int32_t *) data);
+				case 2: return (int32_t) *((int16_t *) data);
+				case 1: return (int32_t) *((int8_t *) data);
+				default: break;
+			}
+			break;
+	}
+	return hash;
+}

@@ -1772,7 +1772,9 @@ void t_c_nano_generator::generate_struct_reader(ofstream &out,
 				indent() << "tn_type_t value_type;" << endl;
 	}
 	if( has_map ) {
-		out  << indent() << "tn_type_t key_type;" << endl;
+		out  <<
+				indent() << "tn_type_t key_type;" << endl <<
+				indent() << "tn_map_elem_t *e;" << endl;
 	}
 	out <<
 			indent() << "size_t ret = 0;" << endl <<
@@ -1950,12 +1952,8 @@ void t_c_nano_generator::generate_serialize_container(ofstream &out,
 		t_type *tval = ((t_map *) ttype)->get_val_type();
 		string tkey_name = type_name (tkey);
 		string tval_name = type_name (tval);
-		string drefkey = (!tkey->is_string() && tkey->is_base_type()) ? "*" : "";
-		string drefval = (!tval->is_string() && tval->is_base_type()) ? "*" : "";
-		string ptrkey = (!tkey->is_string() && tkey->is_base_type()) ? " *" : "";
-		string ptrval = (!tval->is_string() && tval->is_base_type()) ? " *" : "";
-		string getkey = "(" + drefkey + "("+tkey_name+ptrkey+") e->key)";
-		string getval = "(" + drefval + "("+tval_name+ptrval+") e->value)";
+		string getkey = "(*("+tkey_name+"*) e->key)";
+		string getval = "(*("+tval_name+"*) e->value)";
 
 		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_map_begin(protocol, transport, "<< prefix <<", error));" << endl;
 		indent(out) << "size = " << prefix << "->kvs->elem_count;" << endl;
@@ -2186,11 +2184,10 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
         string vt = type_to_enum(tval);
 		string tkname = type_name(tkey);
 		string tvname = type_name(tval);
-		string ptrkey = !key_is_ptr ? "&" : "";
-		string ptrval = !val_is_ptr ? "&" : "";
+		string kprefix = key_is_ptr ? "(*(" + tkname + "*)" : "((" + tkname + "*)";
+		string vprefix = val_is_ptr ? "(*(" + tvname + "*)" : "((" + tvname + "*)";
 
-		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_map_begin(protocol, transport, &key_type, &value_type, &cont_size, error));"
-				<< endl << endl;
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_map_begin(protocol, transport, &key_type, &value_type, &cont_size, error));" << endl;
 
         // make sure we have some kind of data
         indent(out) << "if( cont_size > 0 ) {" << endl;
@@ -2199,12 +2196,6 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
         // make sure the key/value types are what we expect
         indent(out) << "if( key_type == "<< kt << " && value_type == "<< vt <<" ) {" << endl;
         indent_up();
-
-        // declare locals
-        string klocal = tmp("k");
-        string vlocal = tmp("v");
-        declare_local_variable(out, tkey, klocal);
-        declare_local_variable(out, tval, vlocal);
 
         // create and init the map
         indent(out) << "if( " << prefix << " == NULL ) {" << endl;
@@ -2234,17 +2225,12 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
         // read the data
 		indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
         indent_up();
-		if( key_is_ptr ) {
-			indent(out) << klocal << " = NULL;" << endl;
-		}
-        t_field fkey (tkey, klocal);
-        generate_deserialize_field (out, &fkey);
-		if( val_is_ptr ) {
-			indent(out) << vlocal << " = NULL;" << endl;
-		}
-        t_field fval (tval, vlocal);
-        generate_deserialize_field (out, &fval);
-        indent(out) << "return_if_fail(ret, tn_map_put("<< prefix <<", " << ptrkey << klocal << ", " << ptrval << vlocal << ", error));" << endl;
+		indent(out) << "return_if_fail(ret, e = tn_map_append("<< prefix <<", error));" << endl;
+        t_field fkey (tkey, "e->key");
+        generate_deserialize_field (out, &fkey, kprefix, ")", true);
+        t_field fval (tval, "e->value");
+        generate_deserialize_field (out, &fval, vprefix, ")", true);
+        indent(out) << "tn_map_put("<< prefix <<", e);" << endl;
         indent_down();
         indent(out) << "}" << endl;
 
