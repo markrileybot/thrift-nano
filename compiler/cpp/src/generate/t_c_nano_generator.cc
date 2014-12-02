@@ -280,10 +280,12 @@ void t_c_nano_generator::close_generator() {
 			(tn_initial_caps_to_underscores(program_name_));
 
 	// package level init/fini
+	/*
 	f_types_ << "void " << this->nspace_lc << "init();" << endl;
 	f_types_ << "void " << this->nspace_lc << "fini();" << endl;
 	f_types_impl_ << "void " << this->nspace_lc << "init() {}" << endl;
 	f_types_impl_ << "void " << this->nspace_lc << "fini() {}" << endl;
+	*/
 
 	// end cpp include
 	f_types_ << "#ifdef __cplusplus" << endl << "}" << endl << "#endif" << endl;
@@ -1521,6 +1523,8 @@ void t_c_nano_generator::generate_object(t_struct *tstruct) {
 	for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
 		t_type *t = get_true_type ((*m_iter)->get_type());
 		f_types_ << "  " << type_name (t) << " " << (*m_iter)->get_name() << ";" << endl;
+		if(!is_complex_type(t) && !t->is_string())
+			f_types_ << "  bool has_" << (*m_iter)->get_name() << ";" << endl;
 	}
 
 	// close the structure definition and create a typedef
@@ -1643,6 +1647,7 @@ void t_c_nano_generator::generate_struct_init(t_struct *tstruct, string type_pre
 	indent(f_types_impl_) << "self->parent.parent.tn_destroy = &" << type_prefix << "_destroy;" << endl;
 	indent(f_types_impl_) << "self->parent.tn_write = &" << type_prefix << "_write;" << endl;
 	indent(f_types_impl_) << "self->parent.tn_read = &" << type_prefix << "_read;" << endl;
+	indent(f_types_impl_) << "return self;" << endl;
 
 	indent_down();
 	f_types_impl_ << "}" << endl << endl;
@@ -1707,18 +1712,20 @@ void t_c_nano_generator::generate_struct_writer (ofstream &out,
 		indent(out) << endl;
         if(is_complex_type(ftype) || ftype->is_string()) {
             indent(out) << "if( "<< this_name << (*f_iter)->get_name() <<" != NULL ) {" << endl;
-            indent_up();
+        } else {
+        	indent(out) << "if( " << this_name + "has_" + (*f_iter)->get_name()	 << " ) {" << endl;
         }
+        indent_up();
 		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, " <<
 				"\"" << (*f_iter)->get_name() << "\", " <<
 				type_to_enum ((*f_iter)->get_type()) << ", " <<
 				(*f_iter)->get_key() << ", error));" << endl;
 		generate_serialize_field (out, *f_iter, this_name, "");
 		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));" << endl;
-		if(is_complex_type(ftype) || ftype->is_string()) {
-            indent_down();
-            indent(out) << "}" << endl;
-        }
+
+        indent_down();
+        indent(out) << "}" << endl;
+
 	}
 
 	// write the struct map
@@ -1819,6 +1826,8 @@ void t_c_nano_generator::generate_struct_reader(ofstream &out,
 
 	// generate deserialization code for known types
 	for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
+		t_type *t = get_true_type ((*f_iter)->get_type());
+		
 		indent(out) <<
 				"case " << (*f_iter)->get_key() << ":" << endl;
 		indent_up();
@@ -1827,7 +1836,13 @@ void t_c_nano_generator::generate_struct_reader(ofstream &out,
 
         indent_up();
 		// generate deserialize field
+
 		generate_deserialize_field(out, *f_iter, this_name);
+
+		if(!is_complex_type(t) && !t->is_string()) {
+			indent(out) << "self->has_" << (*f_iter)->get_name() << " = true;" << endl;
+		}
+
 		indent_down();
 
 		out <<
