@@ -2,6 +2,8 @@ thrift-nano
 ===========
 A thrift compiler and library for tiny computers
 
+([thrift fork here] (https://github.com/markrileybot/thrift))
+
 The idea
 ========
 [Apache Thrift](https://thrift.apache.org/) is an excellent way to generate services and messages for communication between different systems.  Thrift so nice, I want to use it everywhere.  The problem is that some of the systems I work with are really small and thrift doesn't support small computers very well. I need something like c_glib but glib is just too fat to fit on some computers (something like stm32 or a small arduino).  The goal of this project is to provide 2 additional generators and a library that will fit on a computer with 256k flash.  The generators it should include are:
@@ -30,4 +32,7 @@ Examples
 ========
 Example arduino serial reader: https://github.com/markrileybot/thrift-nano/wiki/Example-Arduino-Serial-Reader
 
+Merging
+=======
 
+I'll merge features into [my thrift fork](https://github.com/markrileybot/thrift) as I complete them
