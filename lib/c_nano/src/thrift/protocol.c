@@ -552,6 +552,7 @@ tn_protocol_compact_write_struct_begin(tn_protocol_t *self, tn_transport_t *tran
     tn_protocol_compact_t *compact = (tn_protocol_compact_t *) self;
     int16_t *lastFieldId = tn_list_append(compact->_lastFieldIdStack, error);
     *lastFieldId = compact->_lastFieldId;
+    compact->_lastFieldId = 0;
     return 0;
 }
 static size_t
@@ -678,6 +679,7 @@ tn_protocol_compact_read_struct_begin(tn_protocol_t *self, tn_transport_t *trans
     tn_protocol_compact_t *compact = (tn_protocol_compact_t *) self;
     int16_t *lastFieldId = tn_list_append(compact->_lastFieldIdStack, error);
     *lastFieldId = compact->_lastFieldId;
+    compact->_lastFieldId = 0;
     return 0;
 }
 static size_t
@@ -861,7 +863,7 @@ tn_protocol_compact_create(tn_error_t *error)
     tn_protocol_compact_t *protocol = tn_alloc(sizeof(tn_protocol_compact_t), error);
     if( *error != 0 ) return NULL;
     protocol->_lastFieldIdStack = NULL;
-    protocol->_lastFieldId = -1;
+    protocol->_lastFieldId = 0;
     protocol->_nextBoolValue = -1;
     tn_protocol_compact_init(protocol, error);
     return protocol;
