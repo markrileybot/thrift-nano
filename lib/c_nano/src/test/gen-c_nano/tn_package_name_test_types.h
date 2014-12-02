@@ -23,9 +23,13 @@ typedef struct
   tn_struct_t parent; 
   tn_buffer_t * strprop;
   int8_t v1;
+  bool has_v1;
   int8_t v2;
+  bool has_v2;
   int8_t v3;
+  bool has_v3;
   int32_t v4;
+  bool has_v4;
   tn_buffer_t * v5;
 } tn_package_name_structb_t;
 tn_package_name_structb_t* tn_package_name_structb_init(tn_package_name_structb_t*, tn_error_t *);
@@ -43,8 +47,6 @@ tn_package_name_structa_t* tn_package_name_structa_init(tn_package_name_structa_
 tn_package_name_structa_t* tn_package_name_structa_create(tn_error_t *);
 /* constants */
 
-void tn_package_name_init();
-void tn_package_name_fini();
 #ifdef __cplusplus
 }
 #endif

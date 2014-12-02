@@ -39,6 +39,7 @@ tn_package_name_structb_read (void *data, tn_protocol_t *protocol, tn_transport_
       case 2:
         if (ftype == T_BYTE) {
           return_if_fail_or_inc(ret, protocol->tn_read_byte(protocol, transport, &self->v1, error));
+          self->has_v1 = true;
         } else {
           return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, ftype, error));
         }
@@ -46,6 +47,7 @@ tn_package_name_structb_read (void *data, tn_protocol_t *protocol, tn_transport_
       case 3:
         if (ftype == T_BYTE) {
           return_if_fail_or_inc(ret, protocol->tn_read_byte(protocol, transport, &self->v2, error));
+          self->has_v2 = true;
         } else {
           return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, ftype, error));
         }
@@ -53,6 +55,7 @@ tn_package_name_structb_read (void *data, tn_protocol_t *protocol, tn_transport_
       case 4:
         if (ftype == T_BYTE) {
           return_if_fail_or_inc(ret, protocol->tn_read_byte(protocol, transport, &self->v3, error));
+          self->has_v3 = true;
         } else {
           return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, ftype, error));
         }
@@ -60,6 +63,7 @@ tn_package_name_structb_read (void *data, tn_protocol_t *protocol, tn_transport_
       case 5:
         if (ftype == T_I32) {
           return_if_fail_or_inc(ret, protocol->tn_read_int32(protocol, transport, &self->v4, error));
+          self->has_v4 = true;
         } else {
           return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, ftype, error));
         }
@@ -103,21 +107,29 @@ tn_package_name_structb_write (void *data, tn_protocol_t *protocol, tn_transport
     return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
   }
   
-  return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "v1", T_BYTE, 2, error));
-  return_if_fail_or_inc(ret, protocol->tn_write_byte(protocol, transport, self->v1, error));
-  return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
+  if( self->has_v1 ) {
+    return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "v1", T_BYTE, 2, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_byte(protocol, transport, self->v1, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
+  }
   
-  return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "v2", T_BYTE, 3, error));
-  return_if_fail_or_inc(ret, protocol->tn_write_byte(protocol, transport, self->v2, error));
-  return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
+  if( self->has_v2 ) {
+    return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "v2", T_BYTE, 3, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_byte(protocol, transport, self->v2, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
+  }
   
-  return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "v3", T_BYTE, 4, error));
-  return_if_fail_or_inc(ret, protocol->tn_write_byte(protocol, transport, self->v3, error));
-  return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
+  if( self->has_v3 ) {
+    return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "v3", T_BYTE, 4, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_byte(protocol, transport, self->v3, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
+  }
   
-  return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "v4", T_I32, 5, error));
-  return_if_fail_or_inc(ret, protocol->tn_write_int32(protocol, transport, self->v4, error));
-  return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
+  if( self->has_v4 ) {
+    return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "v4", T_I32, 5, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_int32(protocol, transport, self->v4, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
+  }
   
   if( self->v5 != NULL ) {
     return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "v5", T_STRING, 6, error));
@@ -163,6 +175,7 @@ tn_package_name_structb_init (tn_package_name_structb_t *self, tn_error_t *error
   self->parent.parent.tn_destroy = &tn_package_name_structb_destroy;
   self->parent.tn_write = &tn_package_name_structb_write;
   self->parent.tn_read = &tn_package_name_structb_read;
+  return self;
 }
 
 tn_package_name_structb_t* 
@@ -414,6 +427,7 @@ tn_package_name_structa_init (tn_package_name_structa_t *self, tn_error_t *error
   self->parent.parent.tn_destroy = &tn_package_name_structa_destroy;
   self->parent.tn_write = &tn_package_name_structa_write;
   self->parent.tn_read = &tn_package_name_structa_read;
+  return self;
 }
 
 tn_package_name_structa_t* 
@@ -430,5 +444,3 @@ tn_package_name_structa_create(tn_error_t *error)
 
 /* constants */
 
-void tn_package_name_init() {}
-void tn_package_name_fini() {}

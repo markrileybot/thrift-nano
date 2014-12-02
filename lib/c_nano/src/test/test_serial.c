@@ -108,7 +108,6 @@ int
 serial_test_init(char *file)
 {
     tn_error_t error = T_ERR_OK;
-	tn_package_name_init();
     FILE *fd = serial_open_port(file);
 
 	if((write_struct = serial_create_structa()) == NULL)
@@ -137,7 +136,6 @@ serial_test_fini()
 	tn_object_destroy(write_struct);
     tn_object_destroy(file_transport);
     tn_object_destroy(compact_protocol);
-	tn_package_name_fini();
 	return 0;
 }
 

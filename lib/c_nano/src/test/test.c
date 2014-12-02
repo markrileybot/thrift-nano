@@ -236,6 +236,11 @@ create_structa()
 	tn_buffer_write(s->structprop->strprop, STRING1, sizeof(STRING1));
 	tn_buffer_write(s->structprop->v5, STRING1, sizeof(STRING1));
 
+	s->structprop->v1 = (int8_t) 1;
+	s->structprop->has_v1 = true;
+	s->structprop->v2 = (int8_t) 0;
+	s->structprop->has_v2 = true;
+
 	int32_t *v;
 	size_t i;
 	for( i = 0; i < 20; i++ )
@@ -255,7 +260,6 @@ create_structa()
 int test_init()
 {
     tn_error_t error = T_ERR_OK;
-	tn_package_name_init();
 
 	if((write_struct = create_structa()) == NULL)
 	{
@@ -289,7 +293,6 @@ int test_fini()
     tn_object_destroy(memory_transport);
     tn_object_destroy(binary_protocol);
     tn_object_destroy(compact_protocol);
-	tn_package_name_fini();
 	return 0;
 }
 
