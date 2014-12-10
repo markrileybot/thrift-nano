@@ -198,13 +198,13 @@ create_structa()
 		printf("Failed to create structb.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
-    s->structprop->strprop = tn_buffer_create(64, &error);
+    s->structprop->strprop = tn_string_create(STRING1, &error);
 	if(error != 0)
 	{
 		printf("Failed to create structb->str.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
-    s->structprop->v5 = tn_buffer_create(32, &error);
+    s->structprop->v5 = tn_string_create(STRING1, &error);
 	if(error != 0)
 	{
 		printf("Failed to create structb->v5.  %s.\n", tn_error_str(error));
@@ -229,12 +229,8 @@ create_structa()
 		return NULL;
 	}
 
-	char nul = '\0';
-	tn_buffer_write(s->strprop, STRING1, sizeof(STRING1) - 1);
-	tn_buffer_write(s->strprop, STRING2, sizeof(STRING2) - 1);
-	tn_buffer_write(s->strprop, &nul, 1);
-	tn_buffer_write(s->structprop->strprop, STRING1, sizeof(STRING1));
-	tn_buffer_write(s->structprop->v5, STRING1, sizeof(STRING1));
+	tn_string_append(s->strprop, STRING1);
+	tn_string_append(s->strprop, STRING2);
 
 	s->structprop->v1 = (int8_t) 1;
 	s->structprop->has_v1 = true;

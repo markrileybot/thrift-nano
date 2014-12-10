@@ -17,15 +17,6 @@
 # define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
-/* Macros for strings */
-#define tn_buffer_str(var, str, size, err) \
-    var = tn_buffer_create(size, err); \
-    tn_buffer_write(var, str, size);
-
-#define tn_buffer_strlit(var, str, err) \
-    tn_buffer_str(var, str, sizeof(str) - 1, err)
-
-
 typedef enum
 {
     T_ERR_OK                        = 0,
@@ -172,6 +163,8 @@ size_t tn_buffer_ensure_cap(tn_buffer_t *mem, size_t len);
 void tn_buffer_reset(tn_buffer_t *self);
 tn_buffer_t* tn_buffer_init(tn_buffer_t *self, size_t bufferSize, tn_error_t *error);
 tn_buffer_t* tn_buffer_create(size_t bufferSize, tn_error_t *error);
+tn_buffer_t* tn_string_create(const char *str, tn_error_t *error);
+size_t tn_string_append(tn_buffer_t *mem, const char *str);
 
 /**
  * Generate a hash for a bit of thrift data.  If data is a complex type

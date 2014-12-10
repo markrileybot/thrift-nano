@@ -228,6 +228,49 @@ tn_buffer_create(size_t bufferSize, tn_error_t *error)
 	return tn_buffer_init(t, bufferSize, error);
 }
 
+tn_buffer_t *
+tn_string_create(const char *str, tn_error_t *error)
+{
+	tn_buffer_t *t = tn_alloc(sizeof(tn_buffer_t), error);
+	if( *error != 0 ) return NULL;
+	t->buf = NULL;
+	// add 1 for nul
+	tn_buffer_init(t, strlen(str) + 1, error);
+	if( *error != 0 )
+	{
+		tn_object_destroy(t);
+		return NULL;
+	}
+	tn_string_append(t, str);
+	return t;
+}
+
+size_t
+tn_string_append(tn_buffer_t *mem, const char *str)
+{
+	static char nul = '\0';
+	if( mem->pos > 0 )
+	{
+		if( ((char*)mem->buf)[mem->pos-1] == '\0' )
+		{
+			// if we have a null at the end, we want to
+			// overwrite with the incoming string
+			mem->pos -= 1;
+		}
+	}
+	size_t r = tn_buffer_write(mem, (void*)str, strlen(str));
+	if( mem->pos > 0 )
+	{
+		if( ((char*)mem->buf)[mem->pos-1] != '\0' )
+		{
+			// if we have a null at the end, we want to
+			// overwrite with the incoming string
+			r += tn_buffer_write(mem, &nul, 1);
+		}
+	}
+	return r;
+}
+
 
 static void
 tn_map_destroy(tn_object_t *obj)
