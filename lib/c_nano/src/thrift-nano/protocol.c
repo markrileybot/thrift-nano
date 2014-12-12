@@ -81,7 +81,7 @@ static size_t tn_protocol_read_map_end          (tn_protocol_t *self, tn_transpo
 static size_t tn_protocol_read_bytes_begin      (tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_bytes_end        (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_bytes            (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {return 0;}
-static size_t tn_protocol_read_string_begin     (tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_string_begin     (tn_protocol_t *self, tn_transport_t *transport, size_t *len, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_string_end       (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_string           (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_int16            (tn_protocol_t *self, tn_transport_t *transport, int16_t *v, tn_error_t *error) {return 0;}
@@ -273,9 +273,9 @@ tn_protocol_binary_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn
     return transport->tn_read(transport, tn_buffer_get(v, len), len, error);
 }
 static size_t
-tn_protocol_binary_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error)
+tn_protocol_binary_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, size_t *len, tn_error_t *error)
 {
-    return self->tn_read_bytes_begin(self, transport, len, error);
+    return self->tn_read_bytes_begin(self, transport, (int32_t*)len, error);
 }
 static size_t
 tn_protocol_binary_read_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error)
@@ -910,7 +910,7 @@ tn_protocol_skip(tn_protocol_t *self, tn_transport_t *transport, tn_type_t type,
         case T_STRING:
         {
             size_t strret;
-            int32_t strsize;
+            size_t strsize;
             return_if_fail_or_inc(strret, self->tn_read_string_begin(self, transport, &strsize, error));
             return_if_fail_or_inc(strret, transport->tn_skip(transport, strsize, error));
             return_if_fail_or_inc(strret, self->tn_read_string_end(self, transport, error));

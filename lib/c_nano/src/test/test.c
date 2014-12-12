@@ -38,21 +38,21 @@ int test_map()
 	int32_t v, i;
 	size_t max = 100;
 	v = max;
-	printf(" === Fill to %d\n", max);
+	printf(" === Fill to %zu\n", max);
 	for( v = max, i = 0, v = max; i < max; i++, v-- )
 	{
 		tn_map_put2(map, &i, &v, &error);
 	}
-	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->kvs->elem_count);
+	printf("Map capacity is %zu\n", map->entry_cap);
+	printf("Map size is %zu\n", map->kvs->elem_count);
 
-	printf(" === Replace to %d\n", max);
+	printf(" === Replace to %zu\n", max);
 	for( i = 0, v = 0; i < max; i++, v++ )
 	{
 		tn_map_put2(map, &i, &v, &error);
 	}
-	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->kvs->elem_count);
+	printf("Map capacity is %zu\n", map->entry_cap);
+	printf("Map size is %zu\n", map->kvs->elem_count);
 
 	struct timeval start, end;
 
@@ -65,8 +65,8 @@ int test_map()
 	gettimeofday(&end, NULL);
 	double total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	double pc = total/CALLS;
-	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->kvs->elem_count);
+	printf("Map capacity is %zu\n", map->entry_cap);
+	printf("Map size is %zu\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 	printf(" === Replace to %d\n", CALLS);
@@ -78,8 +78,8 @@ int test_map()
 	gettimeofday(&end, NULL);
 	total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	pc = total/CALLS;
-	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->kvs->elem_count);
+	printf("Map capacity is %zu\n", map->entry_cap);
+	printf("Map size is %zu\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 	printf(" === Find %d\n", CALLS);
@@ -89,13 +89,13 @@ int test_map()
 	{
 		e = tn_map_find(map, &i);
 		vp = e->value;
-		if( *vp != i ) printf(" ***** map %d != %d ***** ");
+		if( *vp != i ) printf(" ***** map %d != %d ***** ", i, *vp);
 	}
 	gettimeofday(&end, NULL);
 	total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	pc = total/CALLS;
-	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->kvs->elem_count);
+	printf("Map capacity is %zu\n", map->entry_cap);
+	printf("Map size is %zu\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
 	printf(" === Remove %d\n", 10);
@@ -107,8 +107,8 @@ int test_map()
 	gettimeofday(&end, NULL);
 	total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	pc = total/CALLS;
-	printf("Map capacity is %d\n", map->entry_cap);
-	printf("Map size is %d\n", map->kvs->elem_count);
+	printf("Map capacity is %zu\n", map->entry_cap);
+	printf("Map size is %zu\n", map->kvs->elem_count);
 	printf("%f/%d usecs/calls (%f usec/call)\n", total, CALLS, pc);
 
     tn_object_destroy(map);
@@ -139,11 +139,11 @@ test_list()
 
 	i = 0;
 	max = list->elem_count;
-	printf("List has %d\n", max);
+	printf("List has %zu\n", max);
 	for( i = 0; i < max; i++ )
 	{
 		v = tn_list_get(list, i);
-		printf("Item at %d is %d\n", i, *v);
+		printf("Item at %zu is %d\n", i, *v);
 	}
 
 	printf("Remove item at %d\n", 5);
@@ -153,7 +153,7 @@ test_list()
 	for( i = 0; i < max; i++ )
 	{
 		v = tn_list_get(list, i);
-		printf("Item at %d is %d\n", i, *v);
+		printf("Item at %zu is %d\n", i, *v);
 	}
 
 	printf("Remove item at %d\n", 0);
@@ -163,17 +163,17 @@ test_list()
 	for( i = 0; i < max; i++ )
 	{
 		v = tn_list_get(list, i);
-		printf("Item at %d is %d\n", i, *v);
+		printf("Item at %zu is %d\n", i, *v);
 	}
 
-	printf("Remove item at %d\n", list->elem_count-1);
+	printf("Remove item at %zu\n", list->elem_count-1);
 	tn_list_remove(list, list->elem_count-1);
 	i = 0;
 	max = list->elem_count;
 	for( i = 0; i < max; i++ )
 	{
 		v = tn_list_get(list, i);
-		printf("Item at %d is %d\n", i, *v);
+		printf("Item at %zu is %d\n", i, *v);
 	}
 
     tn_object_destroy(list);
@@ -307,7 +307,7 @@ int test_write_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_err
 	gettimeofday(&end, NULL);
 	double total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	double pc = total/CALLS;
-	printf("%f/%d usecs/calls (%f usec/call) bytes=%d pos=%d\n", total, CALLS, pc, bytes, pos);
+	printf("%f/%d usecs/calls (%f usec/call) bytes=%zu pos=%zu\n", total, CALLS, pc, bytes, pos);
     return pos - bytes;
 }
 
@@ -328,19 +328,19 @@ int test_read_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_erro
 	gettimeofday(&end, NULL);
 	double total = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
 	double pc = total/CALLS;
-	printf("%f/%d usecs/calls (%f usec/call) bytes=%d pos=%d\n", total, CALLS, pc, bytes, pos);
+	printf("%f/%d usecs/calls (%f usec/call) bytes=%zu pos=%zu\n", total, CALLS, pc, bytes, pos);
 
 	printf("Test %s\n", read_struct->strprop->buf);
-	printf("Test2 elem_count=%d\t[", read_struct->listprop->elem_count);
+	printf("Test2 elem_count=%zu\t[", read_struct->listprop->elem_count);
 	int32_t *v;
 	size_t size = read_struct->listprop->elem_count;
 	for( i = 0; i < size; i++ )
 	{
 		v = tn_list_get(read_struct->listprop, i);
-		printf(" %d = %d ", i, *v);
+		printf(" %zu = %d ", i, *v);
 	}
 	printf("]\n");
-	printf("Test3 elem_count=%d\t[", read_struct->mapprop->kvs->elem_count);
+	printf("Test3 elem_count=%zu\t[", read_struct->mapprop->kvs->elem_count);
 	tn_map_elem_t *e;
 	size = read_struct->mapprop->kvs->elem_count;
 	for( i = 0; i < size; i++ )
