@@ -1,5 +1,5 @@
 
-#include <thrift/struct.h>
+#include <thrift-nano/struct.h>
 
 // generic IO funcs
 size_t

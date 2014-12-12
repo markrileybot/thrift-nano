@@ -11,7 +11,7 @@ set(CMAKE_SHARED_LINKER_FLAGS 	"${CMAKE_SHARED_LINKER_FLAGS} -flto")
 
 configure_file (
   "${PROJECT_SOURCE_DIR}/lib/c_nano/src/config.h.in"
-  "${PROJECT_BINARY_DIR}/config.h"
+  "${PROJECT_BINARY_DIR}/thrift-nano/config.h"
 )
 
 include_directories("${PROJECT_BINARY_DIR}")

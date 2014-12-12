@@ -2,7 +2,7 @@
 #ifndef __THRIFT_TYPES_H__
 #define __THRIFT_TYPES_H__
 
-#include <config.h>
+#include <thrift-nano/config.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>

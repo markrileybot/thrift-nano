@@ -1,7 +1,7 @@
 
-#include <thrift/types.h>
-#include <thrift/transport.h>
-#include <thrift/mem.h>
+#include <thrift-nano/types.h>
+#include <thrift-nano/transport.h>
+#include <thrift-nano/mem.h>
 
 const static int TN_FT_MAX_CHUNK_SIZE = 256;
 

@@ -1,6 +1,6 @@
 
-#include <thrift/protocol.h>
-#include <thrift/mem.h>
+#include <thrift-nano/protocol.h>
+#include <thrift-nano/mem.h>
 
 
 //==========================================================================

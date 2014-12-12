@@ -2,8 +2,8 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
-#include <thrift/types.h>
-#include <thrift/transport.h>
+#include <thrift-nano/types.h>
+#include <thrift-nano/transport.h>
 
 #define return_if_fail_or_inc(ret, call) \
     ret += call; \

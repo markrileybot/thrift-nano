@@ -1,5 +1,5 @@
 
-#include <thrift/types.h>
+#include <thrift-nano/types.h>
 
 #ifndef __THRIFT_MEM_H__
 #define __THRIFT_MEM_H__

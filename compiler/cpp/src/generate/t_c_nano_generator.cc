@@ -239,7 +239,7 @@ void t_c_nano_generator::init_generator() {
 			endl;
 
 	/* include base types */
-	f_types_ << "/* base includes */" << endl << "#include <thrift/thrift_nano.h>" << endl;
+	f_types_ << "/* base includes */" << endl << "#include <thrift-nano/thrift_nano.h>" << endl;
 
 	/* include other thrift includes */
 	const vector<t_program *> &includes = program_->get_includes();
@@ -2175,7 +2175,8 @@ void t_c_nano_generator::generate_deserialize_field(ofstream &out,
             }
 		}
 	} else if (type->is_enum()) {
-		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_int32(protocol, transport, " << getptr << name << ", error));" << endl;
+		//Need to case to int32 otherwise warning
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_int32(protocol, transport, (int32_t*)" << getptr << name << ", error));" << endl;
 	} else {
 		printf ("DO NOT KNOW HOW TO DESERIALIZE FIELD '%s' TYPE '%s'\n",
 				tfield->get_name().c_str(), type_name (type).c_str());

@@ -1,7 +1,7 @@
 
-#include <config.h>
+#include <thrift-nano/config.h>
 #include <stdlib.h>
-#include <thrift/mem.h>
+#include <thrift-nano/mem.h>
 
 static tn_allocator_t *alloc;
 static tn_allocator_t malloc_allocator;

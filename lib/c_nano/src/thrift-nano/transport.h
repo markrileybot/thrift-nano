@@ -2,7 +2,7 @@
 #ifndef __TRANSPORT_H__
 #define __TRANSPORT_H__
 
-#include <thrift/types.h>
+#include <thrift-nano/types.h>
 
 typedef struct tn_transport_t
 {

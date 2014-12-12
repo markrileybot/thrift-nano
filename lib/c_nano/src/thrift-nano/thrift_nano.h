@@ -6,13 +6,13 @@
 extern "C" {
 #endif
 
-#include <config.h>
-#include <thrift/init.h>
-#include <thrift/types.h>
-#include <thrift/transport.h>
-#include <thrift/protocol.h>
-#include <thrift/struct.h>
-#include <thrift/mem.h>
+#include <thrift-nano/config.h>
+#include <thrift-nano/init.h>
+#include <thrift-nano/types.h>
+#include <thrift-nano/transport.h>
+#include <thrift-nano/protocol.h>
+#include <thrift-nano/struct.h>
+#include <thrift-nano/mem.h>
 
 #ifdef __cplusplus
 }

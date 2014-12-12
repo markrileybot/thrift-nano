@@ -8,7 +8,7 @@
 #define TN_PACKAGE_NAME_TEST_TYPES_H
 
 /* base includes */
-#include <thrift/thrift_nano.h>
+#include <thrift-nano/thrift_nano.h>
 
 /* custom thrift includes */
 

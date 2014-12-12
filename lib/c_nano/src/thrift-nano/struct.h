@@ -2,8 +2,8 @@
 #ifndef __STRUCT_H__
 #define __STRUCT_H__
 
-#include <thrift/transport.h>
-#include <thrift/protocol.h>
+#include <thrift-nano/transport.h>
+#include <thrift-nano/protocol.h>
 
 typedef struct
 {

@@ -1,6 +1,6 @@
 
-#include <thrift/init.h>
-#include <thrift/mem.h>
+#include <thrift-nano/init.h>
+#include <thrift-nano/mem.h>
 
 TN_BOOTSTRAP_FUNC(tn_init)
 {

@@ -1,5 +1,5 @@
-#include <thrift/types.h>
-#include <thrift/mem.h>
+#include <thrift-nano/types.h>
+#include <thrift-nano/mem.h>
 #include <string.h>
 
 #define HASH_PRIME 37
