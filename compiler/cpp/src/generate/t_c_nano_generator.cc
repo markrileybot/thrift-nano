@@ -1781,13 +1781,13 @@ void t_c_nano_generator::generate_struct_reader(ofstream &out,
 		}
 	}
 	if(has_string || has_container) {
-		indent(out) << "size_t size = 0;" << endl;
+		indent(out) << "int32_t size = 0;" << endl;
 	}
 	if(has_container) {
 		out <<
 				indent() << "tn_buffer_t buf;" << endl <<
 				indent() << "size_t i = 0;" << endl <<
-				indent() << "size_t cont_size = 0;" << endl <<
+				indent() << "int32_t cont_size = 0;" << endl <<
 				indent() << "tn_type_t value_type;" << endl;
 	}
 	if( has_map ) {

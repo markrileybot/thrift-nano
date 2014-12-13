@@ -25,7 +25,7 @@ tn_package_name_structb_read (void *data, tn_protocol_t *protocol, tn_transport_
     switch( fid ) {
       case 1:
         if (ftype == T_STRING) {
-          return_if_fail_or_inc(ret, protocol->tn_read_string_begin(protocol, transport, &size, error));
+          return_if_fail_or_inc(ret, protocol->tn_read_string_begin(protocol, transport, (int32_t *)&size, error));
           if( self->strprop == NULL ) { 
             return_if_fail(ret, self->strprop = tn_buffer_create(size, error));
           }
@@ -70,7 +70,7 @@ tn_package_name_structb_read (void *data, tn_protocol_t *protocol, tn_transport_
         break;
       case 6:
         if (ftype == T_STRING) {
-          return_if_fail_or_inc(ret, protocol->tn_read_string_begin(protocol, transport, &size, error));
+          return_if_fail_or_inc(ret, protocol->tn_read_string_begin(protocol, transport, (int32_t *)&size, error));
           if( self->v5 == NULL ) { 
             return_if_fail(ret, self->v5 = tn_buffer_create(size, error));
           }
@@ -213,7 +213,7 @@ tn_package_name_structa_read (void *data, tn_protocol_t *protocol, tn_transport_
     switch( fid ) {
       case 1:
         if (ftype == T_STRING) {
-          return_if_fail_or_inc(ret, protocol->tn_read_string_begin(protocol, transport, &size, error));
+          return_if_fail_or_inc(ret, protocol->tn_read_string_begin(protocol, transport, (int32_t *)&size, error));
           if( self->strprop == NULL ) { 
             return_if_fail(ret, self->strprop = tn_buffer_create(size, error));
           }
@@ -236,7 +236,7 @@ tn_package_name_structa_read (void *data, tn_protocol_t *protocol, tn_transport_
         break;
       case 3:
         if (ftype == T_LIST) {
-          return_if_fail_or_inc(ret, protocol->tn_read_list_begin(protocol, transport, &value_type, &cont_size, error));
+          return_if_fail_or_inc(ret, protocol->tn_read_list_begin(protocol, transport, &value_type, (int32_t *)&cont_size, error));
           if( cont_size > 0 ) {
             if( value_type == T_I32 ) {
               int32_t *v0;
@@ -270,7 +270,7 @@ tn_package_name_structa_read (void *data, tn_protocol_t *protocol, tn_transport_
         break;
       case 4:
         if (ftype == T_MAP) {
-          return_if_fail_or_inc(ret, protocol->tn_read_map_begin(protocol, transport, &key_type, &value_type, &cont_size, error));
+          return_if_fail_or_inc(ret, protocol->tn_read_map_begin(protocol, transport, &key_type, &value_type, (int32_t *)&cont_size, error));
           if( cont_size > 0 ) {
             if( key_type == T_I16 && value_type == T_I16 ) {
               if( self->mapprop == NULL ) {
