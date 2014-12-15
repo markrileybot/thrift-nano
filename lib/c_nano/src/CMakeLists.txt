@@ -1,3 +1,16 @@
+foreach(flag_var
+        CMAKE_C_FLAGS)
+   if(${flag_var} MATCHES "-Os")
+      string(REGEX REPLACE "-Os" "-O0" ${flag_var} "${${flag_var}}")
+   endif(${flag_var} MATCHES "-Os")
+endforeach(flag_var)
+
+foreach(flag_var
+        CMAKE_C_FLAGS_DEBUG)
+   if(${flag_var} MATCHES "-g")
+      string(REGEX REPLACE "-g" "-g3" ${flag_var} "${${flag_var}}")
+   endif(${flag_var} MATCHES "-g")
+endforeach(flag_var)
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 include_directories(${PROJECT_SOURCE_DIR}/lib/c_nano/src/test/gen-c_nano)

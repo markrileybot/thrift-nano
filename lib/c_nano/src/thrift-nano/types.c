@@ -34,12 +34,31 @@ tn_object_destroy(void *t)
     }
 }
 
-
+static bool list_of_complex_type (tn_list_t *obj) {
+	switch ( obj->type ) {
+		case T_STRING:
+		case T_STRUCT:
+		case T_MAP:
+		case T_SET:
+		case T_LIST:
+			return true;
+		default:
+			return false;
+	}
+}
 
 static void
 tn_list_destroy(tn_object_t *obj)
 {
     tn_list_t *list = (tn_list_t*) obj;
+    //Cycle through elements if they're of allocated type and invoke desctuctor
+    if ( list_of_complex_type ( list ) ) {
+	    for ( int i = 0; i < list->elem_count; i++ ) {
+			void ** list_item = (list->data + (i * list->elem_size));
+			tn_object_destroy(*list_item);
+	    }
+	}
+
     tn_free(list->data);
     tn_free(list);
 }
@@ -117,6 +136,11 @@ tn_list_remove(tn_list_t *list, size_t i)
 	size_t ipos, bytes_after;
 	if( i < list->elem_count - 1 )
 	{
+		if ( list_of_complex_type ( list ) ) {
+			void** list_item_obj = tn_list_get ( list, i);
+		    tn_object_destroy(*list_item_obj);
+		}
+
 		ipos = i * list->elem_size;
 		bytes_after = list->elem_size * list->elem_count + list->elem_size - ipos;
 		memmove(list->data, list->data, ipos);
@@ -127,6 +151,13 @@ tn_list_remove(tn_list_t *list, size_t i)
 void 
 tn_list_clear(tn_list_t *list)
 {
+	if ( list_of_complex_type ( list ) ) {
+	    for ( int i = 0; i < list->elem_count; i++ ) {
+			void ** list_item = (list->data + (i * list->elem_size));
+			tn_object_destroy(*list_item);
+	    }
+	}
+
 	memset(list->data, 0, list->elem_cap * list->elem_size);
 	list->elem_count = 0;
 }

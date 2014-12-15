@@ -2078,7 +2078,7 @@ void t_c_nano_generator::generate_serialize_container(ofstream &out,
 		indent_up();
 		indent(out) << vlocal << " = tn_list_get(" << prefix << ",i);"<< endl;
 		t_field vfield(telem, vlocal);
-		generate_serialize_field (out, &vfield, "*", "");
+		generate_serialize_field (out, &vfield, "(*", ")");
 		indent_down();
 		indent(out) << "}" << endl;
 
