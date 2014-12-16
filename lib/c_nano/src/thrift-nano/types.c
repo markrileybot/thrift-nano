@@ -23,6 +23,21 @@ tn_error_str(tn_error_t t)
     return "UNKNOWN ERROR";
 }
 
+static bool
+tn_is_complex_type (tn_type_t type) {
+	switch ( type ) {
+		case T_UTF8:
+		case T_UTF16:
+		case T_STRING:
+		case T_STRUCT:
+		case T_MAP:
+		case T_SET:
+		case T_LIST:
+			return true;
+		default:
+			return false;
+	}
+}
 
 void
 tn_object_destroy(void *t)
@@ -46,25 +61,12 @@ tn_object_reset(void *t)
 	}
 }
 
-static bool list_of_complex_type (tn_list_t *obj) {
-	switch ( obj->type ) {
-		case T_STRING:
-		case T_STRUCT:
-		case T_MAP:
-		case T_SET:
-		case T_LIST:
-			return true;
-		default:
-			return false;
-	}
-}
-
 static void
 tn_list_reset(tn_object_t *obj)
 {
 	size_t i;
 	tn_list_t *list = (tn_list_t*) obj;
-	if ( list_of_complex_type ( list ) ) {
+	if ( tn_is_complex_type( list->type ) ) {
 		for ( i = 0; i < list->elem_count; i++ ) {
 			void ** list_item = (list->data + (i * list->elem_size));
 			tn_object_reset(*list_item);
@@ -76,16 +78,8 @@ tn_list_reset(tn_object_t *obj)
 static void
 tn_list_destroy(tn_object_t *obj)
 {
-	size_t i;
     tn_list_t *list = (tn_list_t*) obj;
-    //Cycle through elements if they're of allocated type and invoke desctuctor
-    if ( list_of_complex_type ( list ) ) {
-	    for ( i = 0; i < list->elem_count; i++ ) {
-			void ** list_item = (list->data + (i * list->elem_size));
-			tn_object_destroy(*list_item);
-	    }
-	}
-
+	tn_list_clear(list);
     tn_free(list->data);
     tn_free(list);
 }
@@ -164,7 +158,7 @@ tn_list_remove(tn_list_t *list, size_t i)
 	size_t ipos, bytes_after;
 	if( i < list->elem_count - 1 )
 	{
-		if ( list_of_complex_type ( list ) ) {
+		if ( tn_is_complex_type( list->type ) ) {
 			void** list_item_obj = tn_list_get ( list, i);
 		    tn_object_destroy(*list_item_obj);
 		}
@@ -180,7 +174,7 @@ void
 tn_list_clear(tn_list_t *list)
 {
 	size_t i;
-	if ( list_of_complex_type ( list ) ) {
+	if ( tn_is_complex_type( list->type ) ) {
 	    for ( i = 0; i < list->elem_count; i++ ) {
 			void ** list_item = (list->data + (i * list->elem_size));
 			tn_object_destroy(*list_item);
@@ -265,6 +259,7 @@ tn_buffer_skip(tn_buffer_t *mem, size_t len)
 static void
 tn_buffer_reset(tn_object_t *self)
 {
+	printf("Reset buffer\n");
 	((tn_buffer_t*)self)->pos = 0;
 }
 tn_buffer_t *
@@ -337,6 +332,7 @@ static void
 tn_map_destroy(tn_object_t *obj)
 {
     tn_map_t *map = (tn_map_t*) obj;
+	tn_map_clear(map);
     tn_object_destroy(map->elems);
     tn_object_destroy(map->kvs);
     tn_free(map->entries);
@@ -346,6 +342,25 @@ static void
 tn_map_reset(tn_object_t *obj)
 {
 	tn_map_t *map = (tn_map_t*) obj;
+	size_t i;
+	tn_map_elem_t *e;
+	bool complex_key = tn_is_complex_type(map->key_type);
+	bool complex_val = tn_is_complex_type(map->val_type);
+	if( complex_key || complex_val )
+	{
+		for ( i = 0; i < map->kvs->elem_count; ++i )
+		{
+			e = tn_map_get(map, i);
+			if( complex_key )
+			{
+				tn_object_reset(*(void**)e->key);
+			}
+			if( complex_val )
+			{
+				tn_object_reset(*(void**)e->value);
+			}
+		}
+	}
 	tn_list_reset((tn_object_t*)map->elems);
 	tn_list_reset((tn_object_t*)map->kvs);
 }
@@ -572,6 +587,14 @@ tn_map_remove(tn_map_t *map, void *key)
 	tn_map_elem_t *e = tn_map_find(map, key);
 	if( e != NULL )
 	{
+		if(tn_is_complex_type(map->key_type))
+		{
+			tn_object_destroy(e->key);
+		}
+		if(tn_is_complex_type(map->val_type))
+		{
+			tn_object_destroy(e->value);
+		}
 		tn_list_remove(map->kvs, e->index);
 		tn_list_remove(map->elems, e->index);
 		tn_map_rebuild(map, &error);
@@ -580,6 +603,26 @@ tn_map_remove(tn_map_t *map, void *key)
 void
 tn_map_clear(tn_map_t *map)
 {
+	size_t i;
+	tn_map_elem_t *e;
+	bool complex_key = tn_is_complex_type(map->key_type);
+	bool complex_val = tn_is_complex_type(map->val_type);
+	if( complex_key || complex_val )
+	{
+		for ( i = 0; i < map->kvs->elem_count; ++i )
+		{
+			e = tn_map_get(map, i);
+			if( complex_key )
+			{
+				tn_object_destroy(*(void**)e->key);
+			}
+			if( complex_val )
+			{
+				tn_object_destroy(*(void**)e->value);
+			}
+		}
+	}
+
 	memset(map->entries, 0, sizeof(tn_map_elem_t*) * map->entry_cap);
 	tn_list_clear(map->elems);
 	tn_list_clear(map->kvs);
