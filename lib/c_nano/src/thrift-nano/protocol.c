@@ -81,7 +81,7 @@ static size_t tn_protocol_read_map_end          (tn_protocol_t *self, tn_transpo
 static size_t tn_protocol_read_bytes_begin      (tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_bytes_end        (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_bytes            (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {return 0;}
-static size_t tn_protocol_read_string_begin     (tn_protocol_t *self, tn_transport_t *transport, size_t *len, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_string_begin     (tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_string_end       (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_string           (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_int16            (tn_protocol_t *self, tn_transport_t *transport, int16_t *v, tn_error_t *error) {return 0;}
@@ -91,11 +91,13 @@ static size_t tn_protocol_read_byte             (tn_protocol_t *self, tn_transpo
 static size_t tn_protocol_read_double           (tn_protocol_t *self, tn_transport_t *transport, double *v, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_bool             (tn_protocol_t *self, tn_transport_t *transport, bool *v, tn_error_t *error) {return 0;}
 static void tn_protocol_destroy(tn_object_t* t) { tn_free(t); }
+static void tn_protocol_reset(tn_object_t* t) {}
 tn_protocol_t*
 tn_protocol_init(tn_protocol_t *protocol, tn_error_t *error)
 {
     protocol->block_container_io     = false;
     protocol->parent.tn_destroy      = &tn_protocol_destroy;
+    protocol->parent.tn_reset        = &tn_protocol_reset;
     protocol->tn_write_field_begin   = &tn_protocol_write_field_begin;
     protocol->tn_write_field_end     = &tn_protocol_write_field_end;
     protocol->tn_write_field_stop    = &tn_protocol_write_field_stop;
@@ -273,7 +275,7 @@ tn_protocol_binary_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn
     return transport->tn_read(transport, tn_buffer_get(v, len), len, error);
 }
 static size_t
-tn_protocol_binary_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, size_t *len, tn_error_t *error)
+tn_protocol_binary_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error)
 {
     return self->tn_read_bytes_begin(self, transport, (int32_t*)len, error);
 }
@@ -910,9 +912,9 @@ tn_protocol_skip(tn_protocol_t *self, tn_transport_t *transport, tn_type_t type,
         case T_STRING:
         {
             size_t strret;
-            size_t strsize;
+            int32_t strsize;
             return_if_fail_or_inc(strret, self->tn_read_string_begin(self, transport, &strsize, error));
-            return_if_fail_or_inc(strret, transport->tn_skip(transport, strsize, error));
+            return_if_fail_or_inc(strret, transport->tn_skip(transport, (size_t)strsize, error));
             return_if_fail_or_inc(strret, self->tn_read_string_end(self, transport, error));
             return strret;
         }

@@ -32,7 +32,7 @@ typedef struct
   bool has_v4;
   tn_buffer_t * v5;
 } tn_package_name_structb_t;
-tn_package_name_structb_t* tn_package_name_structb_init(tn_package_name_structb_t*, tn_error_t *);
+tn_package_name_structb_t* tn_package_name_structb_init(tn_package_name_structb_t*);
 tn_package_name_structb_t* tn_package_name_structb_create(tn_error_t *);
 /* struct structa */
 typedef struct 
@@ -43,7 +43,7 @@ typedef struct
   tn_list_t * listprop;
   tn_map_t * mapprop;
 } tn_package_name_structa_t;
-tn_package_name_structa_t* tn_package_name_structa_init(tn_package_name_structa_t*, tn_error_t *);
+tn_package_name_structa_t* tn_package_name_structa_init(tn_package_name_structa_t*);
 tn_package_name_structa_t* tn_package_name_structa_create(tn_error_t *);
 /* constants */
 

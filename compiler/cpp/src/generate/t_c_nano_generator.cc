@@ -200,6 +200,7 @@ private:
 	void generate_struct_destructor(t_struct *tstruct, string type_prefix, string type_name_t);
 	void generate_struct_init(t_struct *tstruct, string type_prefix, string type_name_t);
 	void generate_struct_create(t_struct *tstruct, string type_prefix, string type_name_t);
+	void generate_struct_reset(t_struct *tstruct, string type_prefix, string type_name_t);
 
 	void generate_serialize_field(ofstream &out, t_field *tfield, string prefix, string suffix);
 	void generate_serialize_struct(ofstream &out, t_struct *tstruct, string prefix);
@@ -1523,8 +1524,9 @@ void t_c_nano_generator::generate_object(t_struct *tstruct) {
 	for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
 		t_type *t = get_true_type ((*m_iter)->get_type());
 		f_types_ << "  " << type_name (t) << " " << (*m_iter)->get_name() << ";" << endl;
-		if(!is_complex_type(t) && !t->is_string())
+		if(!is_complex_type(t) && !t->is_string()) {
 			f_types_ << "  bool has_" << (*m_iter)->get_name() << ";" << endl;
+		}
 	}
 
 	// close the structure definition and create a typedef
@@ -1532,11 +1534,17 @@ void t_c_nano_generator::generate_object(t_struct *tstruct) {
 
 	// start writing the object implementation .c file generate struct I/O methods
 	string this_get = type_name_t + " *self = ("+ type_name_t + "*) data;";
-	generate_struct_reader (f_types_impl_, tstruct, "self->", this_get);
-	generate_struct_writer (f_types_impl_, tstruct, "self->", this_get);
+
 
 	// create the destructor
 	generate_struct_destructor (tstruct, type_prefix, type_name_t);
+
+	// generate the reset
+	generate_struct_reset(tstruct, type_prefix, type_name_t);
+
+	// reader/writer
+	generate_struct_reader (f_types_impl_, tstruct, "self->", this_get);
+	generate_struct_writer (f_types_impl_, tstruct, "self->", this_get);
 
 	// generate the instance init function
 	generate_struct_init (tstruct, type_prefix, type_name_t);
@@ -1560,7 +1568,8 @@ void t_c_nano_generator::generate_struct_create(t_struct *tstruct, string type_p
 			indent(f_types_impl_) << "object->" << (*fiter)->get_name() << " = NULL;" << endl;
 		}
 	}
-	indent(f_types_impl_) << "return " << type_prefix << "_init(object, error);" << endl;
+
+	indent(f_types_impl_) << "return " << type_prefix << "_init(object);" << endl;
 	indent_down();
 	indent(f_types_impl_) << "}" << endl << endl;
 }
@@ -1593,14 +1602,13 @@ void t_c_nano_generator::generate_struct_destructor(t_struct *tstruct, string ty
 	indent(f_types_impl_) << "}" << endl << endl;
 }
 
-void t_c_nano_generator::generate_struct_init(t_struct *tstruct, string type_prefix, string type_name_t) {
-	f_types_ << type_name_t << "* " << type_prefix << "_init("<< type_name_t <<"*, tn_error_t *);" << endl;
+void t_c_nano_generator::generate_struct_reset(t_struct *tstruct, string type_prefix, string type_name_t) {
 	f_types_impl_ <<
-			type_name_t << "* " << endl << type_prefix << "_init (" << type_name_t
-			<< " *self, tn_error_t *error)" << endl <<
+			"static void " << endl <<
+			type_prefix << "_reset(tn_object_t *object)" << endl <<
 			"{" << endl;
-
 	indent_up();
+	indent(f_types_impl_) << type_name_t << " *self = (" << type_name_t << "*) object;" << endl;
 
 	vector<t_field *>::const_iterator fiter;
 	const vector<t_field *> &fields = tstruct->get_members();
@@ -1610,22 +1618,7 @@ void t_c_nano_generator::generate_struct_init(t_struct *tstruct, string type_pre
 		if (is_complex_type(t) || t->is_string()) {
 			indent(f_types_impl_) << "if( self->"<< name <<" != NULL ) {" << endl;
 			indent_up();
-
-			if( t->is_xception() ) {
-				// TODO: handle exception
-			} else if( t->is_struct() ) {
-				string field_type_prefix = tn_type_prefix(t->get_name(), this->nspace_lc);
-				indent(f_types_impl_) << field_type_prefix << "_init(self->"<< name <<", error);" << endl;
-			} else if( t->is_map() ) {
-				indent(f_types_impl_) << "tn_map_clear(self->"<< name <<");" << endl;
-			} else if( t->is_set() ) {
-				indent(f_types_impl_) << "tn_list_clear(self->"<< name <<");" << endl;
-			} else if( t->is_list() ) {
-				indent(f_types_impl_) << "tn_list_clear(self->"<< name <<");" << endl;
-			} else if( t->is_string() ) {
-				indent(f_types_impl_) << "tn_buffer_reset(self->"<< name <<");" << endl;
-			}
-
+			indent(f_types_impl_) << "tn_object_reset(self->"<< name <<");" << endl;
 			indent_down();
 			indent(f_types_impl_) << "}" << endl;
 		} else if (t->is_base_type()) {
@@ -1637,18 +1630,32 @@ void t_c_nano_generator::generate_struct_init(t_struct *tstruct, string type_pre
 			t_const_value* cv = (*fiter)->get_value();
 			if (cv != NULL) {
 				dval += constant_value ("", t, cv);
+				indent(f_types_impl_) << "self->has_" << name << " = true;" << endl;
 			} else {
 				dval += t->is_string() ? "NULL" : "0";
+				indent(f_types_impl_) << "self->has_" << name << " = false;" << endl;
 			}
 			indent(f_types_impl_) << "self->" << name << dval << ";" << endl;
 		}
 	}
 
+	indent_down();
+	indent(f_types_impl_) << "}" << endl << endl;
+}
+
+void t_c_nano_generator::generate_struct_init(t_struct *tstruct, string type_prefix, string type_name_t) {
+	f_types_ << type_name_t << "* " << type_prefix << "_init("<< type_name_t <<"*);" << endl;
+	f_types_impl_ <<
+			type_name_t << "* " << endl << type_prefix << "_init (" << type_name_t
+			<< " *self)" << endl <<
+			"{" << endl;
+	indent_up();
 	indent(f_types_impl_) << "self->parent.parent.tn_destroy = &" << type_prefix << "_destroy;" << endl;
+	indent(f_types_impl_) << "self->parent.parent.tn_reset = &" << type_prefix << "_reset;" << endl;
 	indent(f_types_impl_) << "self->parent.tn_write = &" << type_prefix << "_write;" << endl;
 	indent(f_types_impl_) << "self->parent.tn_read = &" << type_prefix << "_read;" << endl;
+	indent(f_types_impl_) << type_prefix << "_reset((tn_object_t*) self);" << endl;
 	indent(f_types_impl_) << "return self;" << endl;
-
 	indent_down();
 	f_types_impl_ << "}" << endl << endl;
 }
@@ -1800,7 +1807,7 @@ void t_c_nano_generator::generate_struct_reader(ofstream &out,
 			indent() << "tn_type_t ftype;" << endl <<
 			indent() << "int16_t fid;" << endl <<
 			indent() << this_get << endl <<
-			indent() << this->nspace_lc << name_u << "_init(self, error);" << endl;
+			indent() << this->nspace_lc << name_u << "_reset((tn_object_t*) self);" << endl;
 
 
 	// read the beginning of the structure marker
@@ -2127,7 +2134,6 @@ void t_c_nano_generator::generate_deserialize_field(ofstream &out,
             indent(out) << "return_if_fail(ret, " << name << " = tn_buffer_create(size, error));" << endl;
             indent_down();
             indent(out) << "}" << endl;
-            indent(out) << "tn_buffer_reset(" << name << ");" << endl;
 		}
 		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_read_";
 
@@ -2232,7 +2238,6 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
                 tkname <<"), sizeof("<< tvname << "), "<< kt <<", "<< vt <<", cont_size, error));" << endl;
         indent_down();
         indent(out) << "}" << endl;
-        indent(out) << "tn_map_clear("<< prefix << ");" << endl;
         indent(out) << "return_if_fail(ret, tn_list_ensure_cap("<< prefix <<"->kvs, cont_size, error));" << endl;
 
 		// block io support
@@ -2251,7 +2256,7 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
 		}
 
         // read the data
-		indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+		indent(out) << "do {" << endl;
         indent_up();
 		indent(out) << "return_if_fail(ret, e = tn_map_append("<< prefix <<", error));" << endl;
         t_field fkey (tkey, "e->key");
@@ -2260,7 +2265,7 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
         generate_deserialize_field (out, &fval, vprefix, ")", true);
         indent(out) << "tn_map_put("<< prefix <<", e);" << endl;
         indent_down();
-        indent(out) << "}" << endl;
+        indent(out) << "} while(--cont_size);" << endl;
 
 		// block io support
 		if(!is_complex_type(tval) && !tval->is_string() && !is_complex_type(tkey) && !tkey->is_string()) {
@@ -2272,12 +2277,12 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
         indent_down();
         indent(out) << "} else {" << endl;
         indent_up();
-        indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent(out) << "do {" << endl;
         indent_up();
         indent(out) << "return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, key_type, error));" << endl;
         indent(out) << "return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, value_type, error));" << endl;
         indent_down();
-        indent(out) << "}" << endl;
+        indent(out) << "} while(--cont_size);" << endl;
         indent_down();
         indent(out) << "}" << endl;
 
@@ -2313,7 +2318,6 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
         indent(out) << "if( "<< prefix <<" == NULL ) {" << endl;
         indent_up();
         indent(out) << "return_if_fail(ret, "<< prefix <<" = tn_list_create(sizeof("<< tname <<"), cont_size, "<< vt <<", error));" << endl;
-        indent(out) << "tn_list_clear("<< prefix <<");" << endl;
         indent(out) << "return_if_fail(ret, tn_list_ensure_cap("<< prefix <<", cont_size, error));" << endl;
         indent_down();
         indent(out) << "}" << endl;
@@ -2333,13 +2337,13 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
 		}
 
 		// iterate over the elements
-		indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+		indent(out) << "do {" << endl;
         indent_up();
         indent(out) << "return_if_fail(ret, "<< vlocal <<" = tn_list_append("<< prefix <<", error));" << endl;
         t_field fval (tval, vlocal);
         generate_deserialize_field(out, &fval, ptrval, "", true);
         indent_down();
-        indent(out) << "}" << endl;
+        indent(out) << "} while(--cont_size);" << endl;
 
 		// block io support
 		if(!is_complex_type(tval) && !tval->is_string()) {
@@ -2351,11 +2355,11 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
         indent_down();
         indent(out) << "} else {" << endl;
         indent_up();
-        indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent(out) << "do {" << endl;
         indent_up();
         indent(out) << "return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, value_type, error));" << endl;
         indent_down();
-        indent(out) << "}" << endl;
+		indent(out) << "} while(--cont_size);" << endl;
         indent_down();
         indent(out) << "}" << endl;
 
@@ -2391,7 +2395,6 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
         indent(out) << "if( "<< prefix <<" == NULL ) {" << endl;
         indent_up();
         indent(out) << "return_if_fail(ret, "<< prefix <<" = tn_list_create(sizeof("<< tname <<"), cont_size, "<< vt <<", error));" << endl;
-        indent(out) << "tn_list_clear("<< prefix <<");" << endl;
         indent(out) << "return_if_fail(ret, tn_list_ensure_cap("<< prefix <<", cont_size, error));" << endl;
         indent_down();
         indent(out) << "}" << endl;
@@ -2411,13 +2414,13 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
 		}
 
         // iterate over the elements
-        indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent(out) << "do {" << endl;
         indent_up();
         indent(out) << "return_if_fail(ret, "<< vlocal <<" = tn_list_append("<< prefix <<", error));" << endl;
         t_field fval (tval, vlocal);
         generate_deserialize_field(out, &fval, ptrval, "", true);
         indent_down();
-        indent(out) << "}" << endl;
+		indent(out) << "} while(--cont_size);" << endl;
 
 		// block io support
 		if(!is_complex_type(tval) && !tval->is_string()) {
@@ -2429,11 +2432,11 @@ void t_c_nano_generator::generate_deserialize_container (ofstream &out, t_type *
         indent_down();
         indent(out) << "} else {" << endl;
         indent_up();
-        indent(out) << "for (i = 0; i < cont_size; ++i) {" << endl;
+        indent(out) << "do {" << endl;
         indent_up();
         indent(out) << "return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, value_type, error));" << endl;
         indent_down();
-        indent(out) << "}" << endl;
+		indent(out) << "} while(--cont_size);" << endl;
         indent_down();
         indent(out) << "}" << endl;
 

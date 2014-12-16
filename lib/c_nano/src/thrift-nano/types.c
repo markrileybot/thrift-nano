@@ -1,6 +1,7 @@
 #include <thrift-nano/types.h>
 #include <thrift-nano/mem.h>
 #include <string.h>
+#include "types.h"
 
 #define HASH_PRIME 37
 #define HASH_START 17
@@ -34,6 +35,17 @@ tn_object_destroy(void *t)
     }
 }
 
+void
+tn_object_reset(void *t)
+{
+	tn_object_t *obj;
+	if( t != NULL )
+	{
+		obj = (tn_object_t*) t;
+		obj->tn_reset(obj);
+	}
+}
+
 static bool list_of_complex_type (tn_list_t *obj) {
 	switch ( obj->type ) {
 		case T_STRING:
@@ -48,12 +60,27 @@ static bool list_of_complex_type (tn_list_t *obj) {
 }
 
 static void
+tn_list_reset(tn_object_t *obj)
+{
+	size_t i;
+	tn_list_t *list = (tn_list_t*) obj;
+	if ( list_of_complex_type ( list ) ) {
+		for ( i = 0; i < list->elem_count; i++ ) {
+			void ** list_item = (list->data + (i * list->elem_size));
+			tn_object_reset(*list_item);
+		}
+	}
+	list->elem_count = 0;
+}
+
+static void
 tn_list_destroy(tn_object_t *obj)
 {
+	size_t i;
     tn_list_t *list = (tn_list_t*) obj;
     //Cycle through elements if they're of allocated type and invoke desctuctor
     if ( list_of_complex_type ( list ) ) {
-	    for ( int i = 0; i < list->elem_count; i++ ) {
+	    for ( i = 0; i < list->elem_count; i++ ) {
 			void ** list_item = (list->data + (i * list->elem_size));
 			tn_object_destroy(*list_item);
 	    }
@@ -67,6 +94,7 @@ tn_list_t*
 tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn_type_t type, tn_error_t *error)
 {
     list->parent.tn_destroy = &tn_list_destroy;
+	list->parent.tn_reset = &tn_list_reset;
 	list->elem_size = elem_size;
 	list->elem_count = 0;
 	list->type = type;
@@ -151,8 +179,9 @@ tn_list_remove(tn_list_t *list, size_t i)
 void 
 tn_list_clear(tn_list_t *list)
 {
+	size_t i;
 	if ( list_of_complex_type ( list ) ) {
-	    for ( int i = 0; i < list->elem_count; i++ ) {
+	    for ( i = 0; i < list->elem_count; i++ ) {
 			void ** list_item = (list->data + (i * list->elem_size));
 			tn_object_destroy(*list_item);
 	    }
@@ -233,15 +262,16 @@ tn_buffer_skip(tn_buffer_t *mem, size_t len)
     mem->pos += len;
     return len;
 }
-void
-tn_buffer_reset(tn_buffer_t *self)
+static void
+tn_buffer_reset(tn_object_t *self)
 {
-	self->pos = 0;
+	((tn_buffer_t*)self)->pos = 0;
 }
 tn_buffer_t *
 tn_buffer_init(tn_buffer_t *self, size_t bufferSize, tn_error_t *error)
 {
     self->parent.tn_destroy = &tn_buffer_destroy;
+	self->parent.tn_reset = &tn_buffer_reset;
 	if( self->buf == NULL )
 	{
 		self->buf = tn_alloc(bufferSize, error);
@@ -311,6 +341,13 @@ tn_map_destroy(tn_object_t *obj)
     tn_object_destroy(map->kvs);
     tn_free(map->entries);
     tn_free(map);
+}
+static void
+tn_map_reset(tn_object_t *obj)
+{
+	tn_map_t *map = (tn_map_t*) obj;
+	tn_list_reset((tn_object_t*)map->elems);
+	tn_list_reset((tn_object_t*)map->kvs);
 }
 static int32_t
 tn_map_hash(tn_map_t *map, void *key)
@@ -562,6 +599,7 @@ tn_map_init(tn_map_t *map, size_t key_size, size_t value_size, tn_type_t key_typ
     elem_count = (size_t)(elem_count * 2);
 
     map->parent.tn_destroy = &tn_map_destroy;
+	map->parent.tn_reset = &tn_map_reset;
 	map->entry_cap = elem_count;
     map->key_size = key_size;
     map->val_size = value_size;
