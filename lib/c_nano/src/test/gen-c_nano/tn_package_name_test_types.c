@@ -218,6 +218,10 @@ tn_package_name_structa_destroy(tn_object_t *object)
     tn_object_destroy(self->mapprop);
     self->mapprop = NULL;
   }
+  if (self->table != NULL) {
+    tn_object_destroy(self->table);
+    self->table = NULL;
+  }
   tn_free(self);
 }
 
@@ -236,6 +240,9 @@ tn_package_name_structa_reset(tn_object_t *object)
   }
   if( self->mapprop != NULL ) {
     tn_object_reset(self->mapprop);
+  }
+  if( self->table != NULL ) {
+    tn_object_reset(self->table);
   }
 }
 
@@ -353,6 +360,43 @@ tn_package_name_structa_read (void *data, tn_protocol_t *protocol, tn_transport_
           return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, ftype, error));
         }
         break;
+      case 5:
+        if (ftype == T_MAP) {
+          return_if_fail_or_inc(ret, protocol->tn_read_map_begin(protocol, transport, &key_type, &value_type, &cont_size, error));
+          if( cont_size > 0 ) {
+            if( key_type == T_STRING && value_type == T_STRING ) {
+              if( self->table == NULL ) {
+                return_if_fail(ret, self->table = tn_map_create(sizeof(tn_buffer_t *), sizeof(tn_buffer_t *), T_STRING, T_STRING, cont_size, error));
+              }
+              return_if_fail(ret, tn_list_ensure_cap(self->table->kvs, cont_size, error));
+              do {
+                return_if_fail(ret, e = tn_map_append(self->table, error));
+                return_if_fail_or_inc(ret, protocol->tn_read_string_begin(protocol, transport, &size, error));
+                if( (*(tn_buffer_t **)e->key) == NULL ) { 
+                  return_if_fail(ret, (*(tn_buffer_t **)e->key) = tn_buffer_create(size, error));
+                }
+                return_if_fail_or_inc(ret, protocol->tn_read_string(protocol, transport, (*(tn_buffer_t **)e->key), size, error));
+                return_if_fail_or_inc(ret, protocol->tn_read_string_end(protocol, transport, error));
+                return_if_fail_or_inc(ret, protocol->tn_read_string_begin(protocol, transport, &size, error));
+                if( (*(tn_buffer_t **)e->value) == NULL ) { 
+                  return_if_fail(ret, (*(tn_buffer_t **)e->value) = tn_buffer_create(size, error));
+                }
+                return_if_fail_or_inc(ret, protocol->tn_read_string(protocol, transport, (*(tn_buffer_t **)e->value), size, error));
+                return_if_fail_or_inc(ret, protocol->tn_read_string_end(protocol, transport, error));
+                tn_map_put(self->table, e);
+              } while(--cont_size);
+            } else {
+              do {
+                return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, key_type, error));
+                return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, value_type, error));
+              } while(--cont_size);
+            }
+          }
+          return_if_fail_or_inc(ret, protocol->tn_read_map_end(protocol, transport, error));
+        } else {
+          return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, ftype, error));
+        }
+        break;
       default:
         return_if_fail_or_inc(ret, tn_protocol_skip(protocol, transport, ftype, error));
         break;
@@ -429,6 +473,23 @@ tn_package_name_structa_write (void *data, tn_protocol_t *protocol, tn_transport
     return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
   }
   
+  if( self->table != NULL ) {
+    return_if_fail_or_inc(ret, protocol->tn_write_field_begin (protocol, transport, "table", T_MAP, 5, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_map_begin(protocol, transport, self->table, error));
+    size = self->table->kvs->elem_count;
+    for(i = 0; i < size; i++) {
+      e = tn_map_get(self->table,i);
+      return_if_fail_or_inc(ret, protocol->tn_write_string_begin(protocol, transport, (*(tn_buffer_t **) e->key)->pos, error));
+      return_if_fail_or_inc(ret, protocol->tn_write_string(protocol, transport, (*(tn_buffer_t **) e->key), error));
+      return_if_fail_or_inc(ret, protocol->tn_write_string_end(protocol, transport, error));
+      return_if_fail_or_inc(ret, protocol->tn_write_string_begin(protocol, transport, (*(tn_buffer_t **) e->value)->pos, error));
+      return_if_fail_or_inc(ret, protocol->tn_write_string(protocol, transport, (*(tn_buffer_t **) e->value), error));
+      return_if_fail_or_inc(ret, protocol->tn_write_string_end(protocol, transport, error));
+    }
+    return_if_fail_or_inc(ret, protocol->tn_write_map_end(protocol, transport, error));
+    return_if_fail_or_inc(ret, protocol->tn_write_field_end (protocol, transport, error));
+  }
+  
   return_if_fail_or_inc(ret, protocol->tn_write_field_stop (protocol, transport, error));
   return_if_fail_or_inc(ret, protocol->tn_write_struct_end (protocol, transport, error));
   return ret;
@@ -454,6 +515,7 @@ tn_package_name_structa_create(tn_error_t *error)
   object->structprop = NULL;
   object->listprop = NULL;
   object->mapprop = NULL;
+  object->table = NULL;
   return tn_package_name_structa_init(object);
 }
 

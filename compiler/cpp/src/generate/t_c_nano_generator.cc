@@ -209,6 +209,8 @@ private:
 	void generate_deserialize_field(ofstream &out, t_field *tfield, string prefix="", string suffix="", bool is_ptr=false, bool allocate=true);
 	void generate_deserialize_struct(ofstream &out, t_struct *tstruct, string prefix, bool allocate=true);
 	void generate_deserialize_container(ofstream &out, t_type *ttype, string prefix);
+
+	void generate_comment(ofstream &out, string comment);
 };
 
 /**
@@ -297,6 +299,14 @@ void t_c_nano_generator::close_generator() {
 	/* close output file */
 	f_types_.close();
 	f_types_impl_.close();
+}
+
+void t_c_nano_generator::generate_comment(ofstream &out, string comment) {
+	generate_docstring_comment(out,
+			"/**" + endl,
+			" * ",
+			comment,
+			" */" + endl);
 }
 
 /**
@@ -411,7 +421,6 @@ void t_c_nano_generator::generate_consts (vector<t_const *> consts) {
  * // ... additional GObject boilerplate ...
  */
 void t_c_nano_generator::generate_struct (t_struct *tstruct) {
-	f_types_ << "/* struct " << tstruct->get_name() << " */" << endl;
 	generate_object(tstruct);
 }
 
@@ -1513,21 +1522,28 @@ void t_c_nano_generator::generate_object(t_struct *tstruct) {
 	string type_name_t = tn_type_name(tstruct->get_name(), this->nspace_lc);
 
 	// write the instance definition
+	f_types_ << endl;
+	generate_comment(f_types_, tstruct->get_doc());
 	f_types_ <<
 			"typedef struct " << endl <<
 			"{ " << endl <<
 			"  tn_struct_t parent; " << endl;
 
 	// for each field, add a member variable
+	indent_up();
 	vector<t_field *>::const_iterator m_iter;
 	const vector<t_field *> &members = tstruct->get_members();
 	for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
 		t_type *t = get_true_type ((*m_iter)->get_type());
-		f_types_ << "  " << type_name (t) << " " << (*m_iter)->get_name() << ";" << endl;
+		if( !(*m_iter)->get_doc().empty() ) {
+			generate_comment(f_types_, (*m_iter)->get_doc());
+		}
+		indent(f_types_) << type_name (t) << " " << (*m_iter)->get_name() << ";" << endl;
 		if(!is_complex_type(t) && !t->is_string()) {
-			f_types_ << "  bool has_" << (*m_iter)->get_name() << ";" << endl;
+			indent(f_types_) << "bool has_" << (*m_iter)->get_name() << ";" << endl;
 		}
 	}
+	indent_down();
 
 	// close the structure definition and create a typedef
 	f_types_ << "} " << type_name_t << ";" << endl;

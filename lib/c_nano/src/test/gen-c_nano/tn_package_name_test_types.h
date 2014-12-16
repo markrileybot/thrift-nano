@@ -17,31 +17,71 @@ extern "C" {
 #endif
 /* begin types */
 
-/* struct structb */
+
+/**
+ * Cool struct that holds fun data
+ */
 typedef struct 
 { 
   tn_struct_t parent; 
+  /**
+   * Look!  Another string!
+   */
   tn_buffer_t * strprop;
+  /**
+   * v1 field
+   */
   int8_t v1;
   bool has_v1;
+  /**
+   * v2 field
+   */
   int8_t v2;
   bool has_v2;
+  /**
+   * v3 field
+   */
   int8_t v3;
   bool has_v3;
+  /**
+   * v4 field (It's an int!)
+   */
   int32_t v4;
   bool has_v4;
+  /**
+   * AAAAAAAAAAAND a string
+   */
   tn_buffer_t * v5;
 } tn_package_name_structb_t;
 tn_package_name_structb_t* tn_package_name_structb_init(tn_package_name_structb_t*);
 tn_package_name_structb_t* tn_package_name_structb_create(tn_error_t *);
-/* struct structa */
+
+/**
+ * Cool wrapper struct with some metadata
+ */
 typedef struct 
 { 
   tn_struct_t parent; 
+  /**
+   * A pretty cool string
+   */
   tn_buffer_t * strprop;
+  /**
+   * Some fun data
+   */
   tn_package_name_structb_t * structprop;
+  /**
+   * Some more interesting numbers
+   */
   tn_list_t * listprop;
+  /**
+   * Some interesting numbers
+   */
   tn_map_t * mapprop;
+  /**
+   * Collection of key value pairs
+   */
+  tn_map_t * table;
 } tn_package_name_structa_t;
 tn_package_name_structa_t* tn_package_name_structa_init(tn_package_name_structa_t*);
 tn_package_name_structa_t* tn_package_name_structa_create(tn_error_t *);
