@@ -259,7 +259,6 @@ tn_buffer_skip(tn_buffer_t *mem, size_t len)
 static void
 tn_buffer_reset(tn_object_t *self)
 {
-	printf("Reset buffer\n");
 	((tn_buffer_t*)self)->pos = 0;
 }
 tn_buffer_t *
