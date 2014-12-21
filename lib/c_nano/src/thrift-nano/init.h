@@ -1,4 +1,5 @@
 
+#include <thrift-nano/defs.h>
 #include <thrift-nano/machine.h>
 
 #ifndef __THRIFT_INIT_H__

@@ -6,6 +6,7 @@
 extern "C" {
 #endif
 
+#include <thrift-nano/defs.h>
 #include <thrift-nano/config.h>
 #include <thrift-nano/init.h>
 #include <thrift-nano/types.h>

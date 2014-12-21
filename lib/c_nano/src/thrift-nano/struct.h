@@ -2,6 +2,7 @@
 #ifndef __STRUCT_H__
 #define __STRUCT_H__
 
+#include <thrift-nano/defs.h>
 #include <thrift-nano/transport.h>
 #include <thrift-nano/protocol.h>
 

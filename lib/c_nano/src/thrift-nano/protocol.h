@@ -2,6 +2,7 @@
 #ifndef __PROTOCOL_H__
 #define __PROTOCOL_H__
 
+#include <thrift-nano/defs.h>
 #include <thrift-nano/types.h>
 #include <thrift-nano/transport.h>
 
@@ -79,7 +80,7 @@ tn_protocol_t* tn_protocol_init(tn_protocol_t *protocol, tn_error_t *error);
 tn_protocol_t* tn_protocol_create(tn_error_t *error);
 
 
-#ifdef THRIFT_PROTOCOL_BINARY
+#if THRIFT_PROTOCOL_BINARY
 // binary protocol
 typedef struct tn_protocol_binary_t
 {
@@ -88,7 +89,7 @@ typedef struct tn_protocol_binary_t
 tn_protocol_binary_t* tn_protocol_binary_init(tn_protocol_binary_t *protocol, tn_error_t *error);
 tn_protocol_binary_t* tn_protocol_binary_create(tn_error_t *error);
 
-#ifdef THRIFT_PROTOCOL_COMPACT
+#if THRIFT_PROTOCOL_COMPACT
 // compact protocol
 typedef struct tn_protocol_compact_t
 {

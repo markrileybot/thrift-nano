@@ -1,4 +1,4 @@
-
+#include <thrift-nano/defs.h>
 #include <thrift-nano/types.h>
 
 #ifndef __THRIFT_MEM_H__

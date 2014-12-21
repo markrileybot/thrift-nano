@@ -47,7 +47,7 @@ tn_transport_create(tn_error_t *error)
 	return tn_transport_init(t, error);
 }
 
-
+#if THRIFT_TRANSPORT_MEMORY
 static void
 tn_transport_memory_destroy(tn_object_t *t)
 {
@@ -106,8 +106,9 @@ tn_transport_memory_create(size_t bufferSize, tn_error_t *error)
 	if( *error != 0 ) return NULL;
 	return tn_transport_memory_init(t, bufferSize, error);
 }
+#endif
 
-
+#if THRIFT_TRANSPORT_FILE
 static void
 tn_transport_file_destroy(tn_object_t *t)
 {
@@ -177,7 +178,44 @@ tn_transport_file_create(FILE *fd, tn_error_t *error)
     if( *error != 0 ) return NULL;
     return tn_transport_file_init(t, fd, error);
 }
+#endif
 
+#if THRIFT_TRANSPORT_ARDUINO_SERIAL
+static bool
+tn_transport_arduino_serial_open(tn_transport_t *self)
+{
+    return true;
+}
+static size_t
+tn_transport_arduino_serial_read(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
+{
+    size_t l = Serial.readBytes((char*)buf, len);
+    if( l != len ) *error = T_ERR_BUFFER_UNDERFLOW;
+    return l;
+}
+static size_t
+tn_transport_arduino_serial_write(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
+{
+    size_t l = Serial.write((char*)buf, len);
+    if( l != len ) *error = T_ERR_BUFFER_OVERFLOW;
+    return l;
+}
+static size_t
+tn_transport_arduino_serial_skip(tn_transport_t *self, size_t len, tn_error_t *error)
+{
+    return 0;
+}
+tn_transport_t *
+tn_transport_arduino_serial_init(tn_transport_arduino_serial_t *s, tn_error_t *error)
+{
+	tn_transport_t *self = (tn_transport_t*) s;
+	self->tn_is_open = &tn_transport_arduino_serial_is_open;
+	self->tn_read = &tn_transport_arduino_serial_read;
+	self->tn_write = &tn_transport_arduino_serial_write;
+	self->tn_skip = &tn_transport_arduino_serial_skip;
+	return self;
+}
+#endif
 
 
 
