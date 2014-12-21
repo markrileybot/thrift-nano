@@ -12,7 +12,7 @@
 
 /**
  * Configurable things
- * Note: If you modify this list you may want to update thrift_nano.h with defaults
+ * Note: If you modify this list you may want to update defs.h with defaults
  */
 
 /**
