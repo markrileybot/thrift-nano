@@ -36,9 +36,5 @@
  * Enabled memory transport?
  */
 #define THRIFT_TRANSPORT_MEMORY         THRIFT_TRANSPORT_MEMORY_DEF
-/**
- * Enabled arduino serial transport? (requires Arduino.h)
- */
-#define THRIFT_TRANSPORT_ARDUINO_SERIAL THRIFT_TRANSPORT_ARDUINO_SERIAL_DEF
 
 #endif /* __CONFIG_H__ */

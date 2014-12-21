@@ -36,14 +36,4 @@ tn_transport_t* tn_transport_file_init(tn_transport_file_t *self, FILE *fd, tn_e
 tn_transport_t* tn_transport_file_create(FILE *fd, tn_error_t *error);
 #endif
 
-#if THRIFT_TRANSPORT_ARDUINO_SERIAL
-#include <Arduino.h>
-typedef struct tn_transport_arduino_serial_t
-{
-	tn_transport_t parent;
-} tn_transport_arduino_serial_t;
-tn_transport_t * tn_transport_arduino_serial_init(tn_transport_arduino_serial_t *s, tn_error_t *error);
-tn_transport_t * tn_transport_arduino_serial_create(tn_error_t *error);
-#endif
-
 #endif
