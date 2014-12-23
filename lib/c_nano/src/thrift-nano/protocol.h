@@ -86,8 +86,8 @@ typedef struct tn_protocol_binary_t
 {
 	tn_protocol_t parent;
 } tn_protocol_binary_t;
-tn_protocol_binary_t* tn_protocol_binary_init(tn_protocol_binary_t *protocol, tn_error_t *error);
-tn_protocol_binary_t* tn_protocol_binary_create(tn_error_t *error);
+tn_protocol_t* tn_protocol_binary_init(tn_protocol_binary_t *protocol, tn_error_t *error);
+tn_protocol_t* tn_protocol_binary_create(tn_error_t *error);
 
 #if THRIFT_PROTOCOL_COMPACT
 // compact protocol
@@ -101,8 +101,8 @@ typedef struct tn_protocol_compact_t
 	int8_t  _i64buf[10];
 	tn_list_t *_lastFieldIdStack;
 } tn_protocol_compact_t;
-tn_protocol_compact_t* tn_protocol_compact_init(tn_protocol_compact_t *protocol, tn_error_t *error);
-tn_protocol_compact_t* tn_protocol_compact_create(tn_error_t *error);
+tn_protocol_t* tn_protocol_compact_init(tn_protocol_compact_t *protocol, tn_error_t *error);
+tn_protocol_t* tn_protocol_compact_create(tn_error_t *error);
 #endif
 #endif
 
