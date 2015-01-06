@@ -818,6 +818,16 @@ tn_protocol_compact_destroy(tn_object_t* t)
     tn_object_destroy(self->_lastFieldIdStack);
     tn_free(t);
 }
+static void
+tn_protocol_compact_reset(tn_object_t* t)
+{
+    tn_protocol_compact_t *self = (tn_protocol_compact_t*) t;
+    self->_lastFieldId = 0;
+    self->_nextBoolValue = -1;
+    if( self->_lastFieldIdStack != NULL ) {
+        tn_object_reset(self->_lastFieldIdStack);
+    }
+}
 tn_protocol_t*
 tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
 {
@@ -826,6 +836,7 @@ tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
     tn_protocol_t *protocol = (tn_protocol_t *) cproto;
     protocol->block_container_io     = false;
     protocol->parent.tn_destroy      = &tn_protocol_compact_destroy;
+    protocol->parent.tn_reset        = &tn_protocol_compact_reset;
     protocol->tn_write_struct_begin  = &tn_protocol_compact_write_struct_begin;
     protocol->tn_write_struct_end    = &tn_protocol_compact_write_struct_end;
     protocol->tn_write_field_begin   = &tn_protocol_compact_write_field_begin;
@@ -849,14 +860,11 @@ tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
     protocol->tn_read_byte          = &tn_protocol_compact_read_byte;
     protocol->tn_read_bool          = &tn_protocol_compact_read_bool;
 
-    if( cproto->_lastFieldIdStack == NULL )
-    {
+    if( cproto->_lastFieldIdStack == NULL ) {
         cproto->_lastFieldIdStack = tn_list_create(sizeof(int16_t), 2, 0, error);
     }
-    else
-    {
-        tn_list_clear(cproto->_lastFieldIdStack);
-    }
+
+    tn_protocol_compact_reset((tn_object_t*)cproto);
     return protocol;
 }
 tn_protocol_t*
@@ -910,7 +918,7 @@ tn_protocol_skip(tn_protocol_t *self, tn_transport_t *transport, tn_type_t type,
         }
         case T_STRING:
         {
-            size_t strret;
+            size_t strret = 9;
             int32_t strsize;
             return_if_fail_or_inc(strret, self->tn_read_string_begin(self, transport, &strsize, error));
             return_if_fail_or_inc(strret, transport->tn_skip(transport, (size_t)strsize, error));
