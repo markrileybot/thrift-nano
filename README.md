@@ -31,6 +31,7 @@ Building
 Examples
 ========
 Example arduino serial reader: https://github.com/markrileybot/thrift-nano/wiki/Example-Arduino-Serial-Reader
+Example stm32f4 serial reader/writer: https://github.com/markrileybot/stm32f4-thrift
 
 Merging
 =======
