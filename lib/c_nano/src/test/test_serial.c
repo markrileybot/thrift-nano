@@ -1,6 +1,8 @@
 
 #include <tn_package_name_test_types.h>
 #include <termios.h> /* POSIX terminal control definitions */
+#include <errno.h>
+#include <string.h>
 
 #define CALLS 1000000
 //#define CALLS 100
@@ -17,11 +19,10 @@ serial_open_port(char *file)
     FILE *fd; /* File descriptor for the port */
     struct termios options;
 
-    fd = fopen(file, "a");
+    fd = fopen(file, "r+");
     if (fd == NULL)
     {
-        printf("Failed to open %s\n", file);
-        perror("");
+        printf("Failed to open %s.  (%i) %s\n", file, errno, strerror(errno));
         return NULL;
     }
 
@@ -115,7 +116,7 @@ serial_test_init(char *file)
 		printf("Failed to create write_struct.  %s.\n", tn_error_str(error));
 		return -1;
 	}
-    compact_protocol = (tn_protocol_t*)tn_protocol_compact_create(&error);
+    compact_protocol = tn_protocol_compact_create(&error);
 	if(error != 0)
 	{
 		printf("Failed to create compact_protocol.  %s.\n", tn_error_str(error));
@@ -158,6 +159,9 @@ int main(int argc, char** argv)
     size_t bytes = tn_struct_write(write_struct, compact_protocol, file_transport, &error);
     if( error != T_ERR_OK ) printf("Error %s\n", tn_error_str(error));
     printf("Wrote %d bytes\n", bytes);
+	bytes = tn_struct_read(write_struct, compact_protocol, file_transport, &error);
+    if( error != T_ERR_OK ) printf("Error %s\n", tn_error_str(error));
+    printf("Read %d bytes\n", bytes);
 
     serial_test_fini();
 	return res;
