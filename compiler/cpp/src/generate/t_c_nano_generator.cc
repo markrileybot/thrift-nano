@@ -346,6 +346,7 @@ void t_c_nano_generator::generate_enum(t_enum *tenum) {
 	string name_uc = tn_to_upper_case(tn_initial_caps_to_underscores(name));
 	string name_lc = tn_to_lower_case(name_uc);
 
+	generate_comment(f_types_, tenum->get_doc());
 	f_types_ << indent() << "typedef enum " << endl << "{" << endl;
 
 	indent_up();
@@ -362,11 +363,9 @@ void t_c_nano_generator::generate_enum(t_enum *tenum) {
 			f_types_ << "," << endl;
 		}
 
-		f_types_ <<
-				indent() << this->nspace_uc << name_uc << "_" << (*c_iter)->get_name();
-		if ((*c_iter)->has_value()) {
-			f_types_ << " = " << (*c_iter)->get_value();
-		}
+		generate_comment(f_types_, (*c_iter)->get_doc());
+		f_types_ << indent() << this->nspace_uc << name_uc << "_" << (*c_iter)->get_name();
+		f_types_ << " = " << (*c_iter)->get_value();
 	}
 
 	indent_down();
