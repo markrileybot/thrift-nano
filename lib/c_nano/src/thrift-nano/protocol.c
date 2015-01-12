@@ -966,7 +966,7 @@ tn_protocol_skip(tn_protocol_t *self, tn_transport_t *transport, tn_type_t type,
         }
         case T_STRING:
         {
-            size_t strret = 9;
+            size_t strret = 0;
             int32_t strsize;
             return_if_fail_or_inc(strret, self->tn_read_string_begin(self, transport, &strsize, error));
             return_if_fail_or_inc(strret, transport->tn_skip(transport, (size_t)strsize, error));
