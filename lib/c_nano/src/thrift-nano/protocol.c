@@ -8,6 +8,28 @@
 //  Utils
 //
 //==========================================================================
+#ifndef TN_BYTESWAP
+#   ifdef TN_CPU_ENDIAN_BIG
+#       define ntohll(x)  (x)
+#       define ntohl(x)   (x)
+#       define ntohs(x)   (x)
+#       define htonll(x)  (x)
+#       define htonl(x)   (x)
+#       define htons(x)   (x)
+#   else
+#       if __BYTE_ORDER == __LITTLE_ENDIAN
+#           include <byteswap.h>
+#           define ntohll(x) bswap_64 (x)
+#           define ntohl(x)  bswap_32 (x)
+#           define ntohs(x)  bswap_16 (x)
+#           define htonll(x) bswap_64 (x)
+#           define htonl(x)  bswap_32 (x)
+#           define htons(x)  bswap_16 (x)
+#       else
+#           error "Could not determine target byte order!"
+#       endif
+#   endif
+#endif
 
 
 static int64_t
@@ -119,6 +141,7 @@ tn_protocol_init(tn_protocol_t *protocol, tn_error_t *error)
     protocol->tn_write_byte          = &tn_protocol_write_byte;
     protocol->tn_write_double        = &tn_protocol_write_double;
     protocol->tn_write_bool	         = &tn_protocol_write_bool;
+    protocol->tn_write_size          = &tn_protocol_write_int32;
 
     protocol->tn_read_field_begin    = &tn_protocol_read_field_begin;
     protocol->tn_read_field_end      = &tn_protocol_read_field_end;
@@ -141,6 +164,7 @@ tn_protocol_init(tn_protocol_t *protocol, tn_error_t *error)
     protocol->tn_read_byte           = &tn_protocol_read_byte;
     protocol->tn_read_double         = &tn_protocol_read_double;
     protocol->tn_read_bool	         = &tn_protocol_read_bool;
+    protocol->tn_read_size           = &tn_protocol_read_int32;
     return protocol;
 }
 tn_protocol_t*
@@ -176,7 +200,7 @@ tn_protocol_binary_write_list_begin(tn_protocol_t *self, tn_transport_t *transpo
 {
     size_t ret = 0;
     return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, (int8_t)list->type, error));
-    return_if_fail_or_inc(ret, self->tn_write_int32(self, transport, (int32_t)list->elem_count, error));
+    return_if_fail_or_inc(ret, self->tn_write_size(self, transport, (int32_t)list->elem_count, error));
     return ret;
 }
 static size_t
@@ -185,13 +209,13 @@ tn_protocol_binary_write_map_begin(tn_protocol_t *self, tn_transport_t *transpor
     size_t ret = 0;
     return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, (int8_t)map->key_type, error));
     return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, (int8_t)map->val_type, error));
-    return_if_fail_or_inc(ret, self->tn_write_int32(self, transport, (int32_t)map->kvs->elem_count, error));
+    return_if_fail_or_inc(ret, self->tn_write_size(self, transport, (int32_t)map->kvs->elem_count, error));
     return ret;
 }
 static size_t
 tn_protocol_binary_write_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len, tn_error_t *error)
 {
-    return self->tn_write_int32(self, transport, len, error);
+    return self->tn_write_size(self, transport, len, error);
 }
 static size_t
 tn_protocol_binary_write_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t* buf, tn_error_t *error)
@@ -211,16 +235,19 @@ tn_protocol_binary_write_string(tn_protocol_t *self, tn_transport_t *transport, 
 static size_t
 tn_protocol_binary_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v, tn_error_t *error)
 {
+    v = htons(v);
     return transport->tn_write(transport, &v, sizeof(int16_t), error);
 }
 static size_t
 tn_protocol_binary_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v, tn_error_t *error)
 {
+    v = htonl(v);
     return transport->tn_write(transport, &v, sizeof(int32_t), error);
 }
 static size_t
 tn_protocol_binary_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v, tn_error_t *error)
 {
+    v = htonll(v);
     return transport->tn_write(transport, &v, sizeof(int64_t), error);
 }
 static size_t
@@ -252,7 +279,7 @@ tn_protocol_binary_read_list_begin(tn_protocol_t *self, tn_transport_t *transpor
 {
     size_t ret = 0;
     return_if_fail_or_inc(ret, tn_protocol_read_type(self, transport, elemType, error));
-    return_if_fail_or_inc(ret, self->tn_read_int32(self, transport, size, error));
+    return_if_fail_or_inc(ret, self->tn_read_size(self, transport, size, error));
     return ret;
 }
 static size_t
@@ -261,13 +288,13 @@ tn_protocol_binary_read_map_begin(tn_protocol_t *self, tn_transport_t *transport
     size_t ret = 0;
     return_if_fail_or_inc(ret, tn_protocol_read_type(self, transport, keyType, error));
     return_if_fail_or_inc(ret, tn_protocol_read_type(self, transport, valueType, error));
-    return_if_fail_or_inc(ret, self->tn_read_int32(self, transport, size, error));
+    return_if_fail_or_inc(ret, self->tn_read_size(self, transport, size, error));
     return ret;
 }
 static size_t
 tn_protocol_binary_read_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error)
 {
-    return self->tn_read_int32(self, transport, len, error);
+    return self->tn_read_size(self, transport, len, error);
 }
 static size_t
 tn_protocol_binary_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error)
@@ -277,7 +304,7 @@ tn_protocol_binary_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn
 static size_t
 tn_protocol_binary_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error)
 {
-    return self->tn_read_bytes_begin(self, transport, (int32_t*)len, error);
+    return self->tn_read_bytes_begin(self, transport, len, error);
 }
 static size_t
 tn_protocol_binary_read_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error)
@@ -287,17 +314,23 @@ tn_protocol_binary_read_string(tn_protocol_t *self, tn_transport_t *transport, t
 static size_t
 tn_protocol_binary_read_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t *v, tn_error_t *error)
 {
-    return transport->tn_read(transport, v, sizeof(int16_t), error);
+    size_t r = transport->tn_read(transport, v, sizeof(int16_t), error);
+    *v = ntohs(*v);
+    return r;
 }
 static size_t
 tn_protocol_binary_read_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t *v, tn_error_t *error)
 {
-    return transport->tn_read(transport, v, sizeof(int32_t), error);
+    size_t r = transport->tn_read(transport, v, sizeof(int32_t), error);
+    *v = ntohl(*v);
+    return r;
 }
 static size_t
 tn_protocol_binary_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v, tn_error_t *error)
 {
-    return transport->tn_read(transport, v, sizeof(int64_t), error);
+    size_t r = transport->tn_read(transport, v, sizeof(int64_t), error);
+    *v = ntohll(*v);
+    return r;
 }
 static size_t
 tn_protocol_binary_read_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t *v, tn_error_t *error)
@@ -338,6 +371,7 @@ tn_protocol_binary_init(tn_protocol_binary_t *binproto, tn_error_t *error)
     protocol->tn_write_byte          = &tn_protocol_binary_write_byte;
     protocol->tn_write_double        = &tn_protocol_binary_write_double;
     protocol->tn_write_bool    	     = &tn_protocol_binary_write_bool;
+    protocol->tn_write_size    	     = &tn_protocol_binary_write_int32;
 
     protocol->tn_read_field_begin    = &tn_protocol_binary_read_field_begin;
     protocol->tn_read_list_begin     = &tn_protocol_binary_read_list_begin;
@@ -352,6 +386,7 @@ tn_protocol_binary_init(tn_protocol_binary_t *binproto, tn_error_t *error)
     protocol->tn_read_byte           = &tn_protocol_binary_read_byte;
     protocol->tn_read_double         = &tn_protocol_binary_read_double;
     protocol->tn_read_bool           = &tn_protocol_binary_read_bool;
+    protocol->tn_read_size    	     = &tn_protocol_binary_read_int32;
     return protocol;
 }
 tn_protocol_t*
@@ -459,11 +494,11 @@ tn_protocol_compact_int64_to_zigzag(int64_t n) {
 }
 static int32_t
 tn_protocol_compact_zigzag_to_int32(uint32_t n) {
-    return (n >> 1) ^ -(n & 1);
+    return (((uint32_t)n) >> 1) ^ -(n & 1);
 }
 static int64_t
 tn_protocol_compact_zigzag_to_int64(uint64_t n) {
-    return (n >> 1) ^ -(n & 1);
+    return (((uint64_t)n) >> 1) ^ -(n & 1);
 }
 
 
@@ -622,7 +657,7 @@ tn_protocol_compact_write_list_begin(tn_protocol_t *self, tn_transport_t *transp
     else
     {
         return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, 0xf0 | tnc_type_map[type], error));
-        return_if_fail_or_inc(ret, self->tn_write_int32(self, transport, (int32_t) size, error));
+        return_if_fail_or_inc(ret, self->tn_write_size(self, transport, (int32_t) size, error));
     }
     return ret;
 }
@@ -633,7 +668,7 @@ tn_protocol_compact_write_map_begin(tn_protocol_t *self, tn_transport_t *transpo
     tn_type_t keyType = map->key_type;
     tn_type_t valueType = map->val_type;
     size_t size = map->kvs->elem_count;
-    return_if_fail_or_inc(ret, self->tn_write_int32(self, transport, (int32_t)size, error));
+    return_if_fail_or_inc(ret, self->tn_write_size(self, transport, (int32_t)size, error));
     return_if_fail_or_inc(ret, self->tn_write_byte(self, transport, tnc_type_map[keyType] << 4 | tnc_type_map[valueType], error));
     return ret;
 }
@@ -646,6 +681,11 @@ static size_t
 tn_protocol_compact_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v, tn_error_t *error)
 {
     return tn_protocol_compact_write_varint32(self, transport, tn_protocol_compact_int32_to_zigzag(v), error);
+}
+static size_t
+tn_protocol_compact_write_size(tn_protocol_t *self, tn_transport_t *transport, int32_t v, tn_error_t *error)
+{
+    return tn_protocol_compact_write_varint32(self, transport, v, error);
 }
 static size_t
 tn_protocol_compact_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v, tn_error_t *error)
@@ -745,7 +785,7 @@ tn_protocol_compact_read_list_begin(tn_protocol_t *self, tn_transport_t *transpo
     *size = ((uint8_t)sizeAndType >> 4) & 0x0f;
     if( *size == 15 )
     {
-        return_if_fail_or_inc(ret, self->tn_read_int32(self, transport, size, error));
+        return_if_fail_or_inc(ret, self->tn_read_size(self, transport, size, error));
     }
     *elemType = tn_protocol_compact_map_type(sizeAndType & 0x0f);
     return ret;
@@ -755,7 +795,7 @@ tn_protocol_compact_read_map_begin(tn_protocol_t *self, tn_transport_t *transpor
 {
     size_t ret = 0;
     int8_t keyAndValueType;
-    return_if_fail_or_inc(ret, self->tn_read_int32(self, transport, size, error));
+    return_if_fail_or_inc(ret, self->tn_read_size(self, transport, size, error));
     return_if_fail_or_inc(ret, self->tn_read_byte(self, transport, &keyAndValueType, error));
     *keyType = tn_protocol_compact_map_type(keyAndValueType >> 4 & 0x0f);
     *valueType = tn_protocol_compact_map_type(keyAndValueType & 0x0f);
@@ -778,6 +818,12 @@ tn_protocol_compact_read_int32(tn_protocol_t *self, tn_transport_t *transport, i
     return_if_fail_or_inc(ret, tn_protocol_compact_read_varint32(self, transport, v, error));
     *v = tn_protocol_compact_zigzag_to_int32(*v);
     return ret;
+}
+static size_t
+tn_protocol_compact_read_size(tn_protocol_t *self, tn_transport_t *transport, int32_t *v, tn_error_t *error)
+{
+    size_t ret = 0;
+    return return_if_fail_or_inc(ret, tn_protocol_compact_read_varint32(self, transport, v, error));
 }
 static size_t
 tn_protocol_compact_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v, tn_error_t *error)
@@ -848,6 +894,7 @@ tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
     protocol->tn_write_int64         = &tn_protocol_compact_write_int64;
     protocol->tn_write_byte          = &tn_protocol_compact_write_byte;
     protocol->tn_write_bool          = &tn_protocol_compact_write_bool;
+    protocol->tn_write_size          = &tn_protocol_compact_write_size;
 
     protocol->tn_read_struct_begin  = &tn_protocol_compact_read_struct_begin;
     protocol->tn_read_struct_end    = &tn_protocol_compact_read_struct_end;
@@ -859,6 +906,7 @@ tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
     protocol->tn_read_int64         = &tn_protocol_compact_read_int64;
     protocol->tn_read_byte          = &tn_protocol_compact_read_byte;
     protocol->tn_read_bool          = &tn_protocol_compact_read_bool;
+    protocol->tn_read_size          = &tn_protocol_compact_read_size;
 
     if( cproto->_lastFieldIdStack == NULL ) {
         cproto->_lastFieldIdStack = tn_list_create(sizeof(int16_t), 2, 0, error);

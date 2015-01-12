@@ -47,6 +47,7 @@ typedef struct tn_protocol_t
 	size_t (*tn_write_byte)         (struct tn_protocol_t *self, tn_transport_t *transport, int8_t v, tn_error_t *error);
 	size_t (*tn_write_bool)         (struct tn_protocol_t *self, tn_transport_t *transport, bool v, tn_error_t *error);
 	size_t (*tn_write_double)       (struct tn_protocol_t *self, tn_transport_t *transport, double v, tn_error_t *error);
+	size_t (*tn_write_size)          (struct tn_protocol_t *self, tn_transport_t *transport, int32_t v, tn_error_t *error);
 
 
 	// fields and such
@@ -75,6 +76,7 @@ typedef struct tn_protocol_t
 	size_t (*tn_read_byte)          (struct tn_protocol_t *self, tn_transport_t *transport, int8_t *v, tn_error_t *error);
 	size_t (*tn_read_bool)          (struct tn_protocol_t *self, tn_transport_t *transport, bool *v, tn_error_t *error);
 	size_t (*tn_read_double)        (struct tn_protocol_t *self, tn_transport_t *transport, double *v, tn_error_t *error);
+	size_t (*tn_read_size)          (struct tn_protocol_t *self, tn_transport_t *transport, int32_t *v, tn_error_t *error);
 } tn_protocol_t;
 tn_protocol_t* tn_protocol_init(tn_protocol_t *protocol, tn_error_t *error);
 tn_protocol_t* tn_protocol_create(tn_error_t *error);
