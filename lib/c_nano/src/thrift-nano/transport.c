@@ -104,6 +104,7 @@ tn_transport_memory_create(size_t bufferSize, tn_error_t *error)
 {
 	tn_transport_memory_t *t = tn_alloc(sizeof(tn_transport_memory_t), error);
 	if( *error != 0 ) return NULL;
+	t->buf = NULL;
 	return tn_transport_memory_init(t, bufferSize, error);
 }
 #endif
