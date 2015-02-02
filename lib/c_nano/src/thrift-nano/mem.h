@@ -11,7 +11,7 @@ typedef struct tn_allocator_t
     void   (*tn_free)(struct tn_allocator_t *self, void *m);
 } tn_allocator_t;
 
-void tn_alloc_init();
+void tn_alloc_init(void);
 void tn_set_allocator(tn_allocator_t *allocator);
 void * tn_alloc(size_t size, tn_error_t *error);
 void * tn_alloc_array(size_t size, size_t count, tn_error_t *error);

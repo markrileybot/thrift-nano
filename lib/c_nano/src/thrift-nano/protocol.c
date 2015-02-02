@@ -823,7 +823,8 @@ static size_t
 tn_protocol_compact_read_size(tn_protocol_t *self, tn_transport_t *transport, int32_t *v, tn_error_t *error)
 {
     size_t ret = 0;
-    return return_if_fail_or_inc(ret, tn_protocol_compact_read_varint32(self, transport, v, error));
+    return_if_fail_or_inc(ret, tn_protocol_compact_read_varint32(self, transport, v, error));
+    return ret;
 }
 static size_t
 tn_protocol_compact_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v, tn_error_t *error)
@@ -878,8 +879,8 @@ tn_protocol_t*
 tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
 {
     tn_protocol_binary_t *binprotocol = (tn_protocol_binary_t*) cproto;
-    tn_protocol_binary_init(binprotocol, error);
     tn_protocol_t *protocol = (tn_protocol_t *) cproto;
+    tn_protocol_binary_init(binprotocol, error);
     protocol->block_container_io     = false;
     protocol->parent.tn_destroy      = &tn_protocol_compact_destroy;
     protocol->parent.tn_reset        = &tn_protocol_compact_reset;
@@ -909,7 +910,7 @@ tn_protocol_compact_init(tn_protocol_compact_t *cproto, tn_error_t *error)
     protocol->tn_read_size          = &tn_protocol_compact_read_size;
 
     if( cproto->_lastFieldIdStack == NULL ) {
-        cproto->_lastFieldIdStack = tn_list_create(sizeof(int16_t), 2, 0, error);
+        cproto->_lastFieldIdStack = tn_list_create(sizeof(int16_t), 10, T_I16, error);
     }
 
     tn_protocol_compact_reset((tn_object_t*)cproto);
@@ -1029,4 +1030,3 @@ tn_protocol_skip(tn_protocol_t *self, tn_transport_t *transport, tn_type_t type,
     }
     return 0;
 }
-

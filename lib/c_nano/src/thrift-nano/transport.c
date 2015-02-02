@@ -148,6 +148,10 @@ tn_transport_file_write(tn_transport_t *self, void *buf, size_t len, tn_error_t 
 static size_t
 tn_transport_file_skip(tn_transport_t *self, size_t len, tn_error_t *error)
 {
+    const char cbuf[TN_FT_MAX_CHUNK_SIZE];
+    void *buf = (void*) &cbuf;
+    size_t total = 0;
+
     tn_transport_file_t *file = (tn_transport_file_t*) self;
     if( !fseek(file->fd, len, SEEK_CUR) )
     {
@@ -155,9 +159,6 @@ tn_transport_file_skip(tn_transport_t *self, size_t len, tn_error_t *error)
     }
 
     // fd might not support seek...try to read chunks
-    const char cbuf[TN_FT_MAX_CHUNK_SIZE];
-    void *buf = (void*) &cbuf;
-    size_t total = 0;
     while( (total += tn_transport_file_read(self, buf, MIN(total-len, TN_FT_MAX_CHUNK_SIZE), error)) < len )
     {
         if( *error != 0 )
@@ -188,6 +189,3 @@ tn_transport_file_create(FILE *fd, tn_error_t *error)
     return tn_transport_file_init(t, fd, error);
 }
 #endif
-
-
-

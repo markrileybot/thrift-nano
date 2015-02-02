@@ -37,4 +37,6 @@
  */
 #define THRIFT_TRANSPORT_MEMORY         THRIFT_TRANSPORT_MEMORY_DEF
 
+#define TN_CPU_ENDIAN_BIG
+
 #endif /* __CONFIG_H__ */

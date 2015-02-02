@@ -68,7 +68,7 @@ tn_list_reset(tn_object_t *obj)
 	tn_list_t *list = (tn_list_t*) obj;
 	if ( tn_is_complex_type( list->type ) ) {
 		for ( i = 0; i < list->elem_count; i++ ) {
-			void ** list_item = (list->data + (i * list->elem_size));
+			void ** list_item = ((uint8_t*)list->data + (i * list->elem_size));
 			tn_object_reset(*list_item);
 		}
 	}
@@ -84,7 +84,7 @@ tn_list_destroy(tn_object_t *obj)
     tn_free(list);
 }
 
-tn_list_t* 
+tn_list_t*
 tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn_type_t type, tn_error_t *error)
 {
     list->parent.tn_destroy = &tn_list_destroy;
@@ -100,7 +100,7 @@ tn_list_init(tn_list_t *list, size_t elem_size, size_t elem_count, tn_type_t typ
 	return list;
 }
 
-tn_list_t* 
+tn_list_t*
 tn_list_create(size_t elem_size, size_t elem_count, tn_type_t type, tn_error_t *error)
 {
 	tn_list_t *list = tn_alloc(sizeof(tn_list_t), error);
@@ -136,26 +136,26 @@ tn_list_ensure_cap(tn_list_t *list, size_t count, tn_error_t *error)
     }
 }
 
-void* 
+void*
 tn_list_append(tn_list_t *list, tn_error_t *error)
 {
     tn_list_ensure_cap(list, 1, error);
     if( *error != 0 ) return NULL;
 	list->elem_count++;
-	return list->data + ((list->elem_count - 1) * list->elem_size);
+	return (uint8_t*)list->data + ((list->elem_count - 1) * list->elem_size);
 }
 
-void* 
+void*
 tn_list_get(tn_list_t *list, size_t i)
 {
 	if( i < 0 || i >= list->elem_count ) return NULL;
-	return list->data + (i * list->elem_size);
+	return (uint8_t*)list->data + (i * list->elem_size);
 }
-void 
+void
 tn_list_remove(tn_list_t *list, size_t i)
 {
+  size_t ipos, bytes_after;
 	if( i < 0 || i >= list->elem_count ) return;
-	size_t ipos, bytes_after;
 	if( i < list->elem_count - 1 )
 	{
 		if ( tn_is_complex_type( list->type ) ) {
@@ -165,18 +165,18 @@ tn_list_remove(tn_list_t *list, size_t i)
 
 		ipos = i * list->elem_size;
 		bytes_after = list->elem_size * list->elem_count + list->elem_size - ipos;
-		memmove(list->data, list->data, ipos);
-		memmove(list->data + ipos, list->data + ipos + list->elem_size, bytes_after);
+		memmove((uint8_t*)list->data, (uint8_t*)list->data, ipos);
+		memmove((uint8_t*)list->data + ipos, (uint8_t*)list->data + ipos + list->elem_size, bytes_after);
 	}
 	list->elem_count--;
 }
-void 
+void
 tn_list_clear(tn_list_t *list)
 {
 	size_t i;
 	if ( tn_is_complex_type( list->type ) ) {
 	    for ( i = 0; i < list->elem_count; i++ ) {
-			void ** list_item = (list->data + (i * list->elem_size));
+			void ** list_item = ((uint8_t*)list->data + (i * list->elem_size));
 			tn_object_destroy(*list_item);
 	    }
 	}
@@ -185,11 +185,11 @@ tn_list_clear(tn_list_t *list)
 	list->elem_count = 0;
 }
 
-void * 
+void *
 tn_list_pop(tn_list_t *list)
 {
 	tn_list_remove(list, list->elem_count - 1);
-	return list->data + (list->elem_count * list->elem_size);
+	return (uint8_t*)list->data + (list->elem_count * list->elem_size);
 }
 
 
@@ -204,8 +204,9 @@ tn_buffer_destroy(tn_object_t *self)
 void *
 tn_buffer_get(tn_buffer_t *mem, size_t len)
 {
+  void *chunk = (uint8_t*)mem->buf + mem->pos;
 	len = MIN(len, mem->len - mem->pos);
-	void *chunk = mem->buf + mem->pos;
+
 	mem->pos += len;
     return chunk;
 }
@@ -213,8 +214,7 @@ size_t
 tn_buffer_ensure_cap(tn_buffer_t *mem, size_t len)
 {
 	if ( mem->user_buffer ) {
-		//We don't resize user provided buffers, these should only be used for reading
-		return 0;
+		return MIN(len, mem->len - mem->pos);
 	}
 	if( mem->len - mem->pos <= len )
 	{
@@ -243,21 +243,17 @@ size_t
 tn_buffer_read(tn_buffer_t *mem, void *buf, size_t len)
 {
 	len = MIN(len, mem->len - mem->pos);
-	memcpy(buf, mem->buf+mem->pos, len);
+	memcpy(buf, (uint8_t*)mem->buf+mem->pos, len);
 	mem->pos += len;
     return len;
 }
 size_t
 tn_buffer_write(tn_buffer_t *mem, void *buf, size_t len)
 {
-	if ( mem->user_buffer ) {
-		//We don't write to user provided buffers, these should only be used for reading
-		return 0;
-	}
 	len = tn_buffer_ensure_cap(mem, len);
-	memcpy(mem->buf+mem->pos, buf, len);
+	memcpy((uint8_t*)mem->buf+mem->pos, buf, len);
 	mem->pos += len;
-    return len;
+  return len;
 }
 size_t
 tn_buffer_skip(tn_buffer_t *mem, size_t len)
@@ -426,7 +422,7 @@ tn_map_rebuild(tn_map_t *map, tn_error_t *error)
 	for( i = 0; i < len; i++ )
 	{
 		k = tn_list_get(map->kvs, i);
-		v = k + map->key_size;
+		v = (uint8_t*)k + map->key_size;
 		h = tn_map_hash(map, k);
 		e = p = map->entries[h];
 
@@ -497,7 +493,7 @@ tn_map_append(tn_map_t *map, tn_error_t *error)
 	if( *error == 0 )
 	{
 		e->key = tn_list_append(map->kvs, error);
-		e->value = e->key + map->key_size;
+		e->value = (uint8_t*)e->key + map->key_size;
 		e->index = map->elems->elem_count - 1;
 		e->next = NULL;
 	}
