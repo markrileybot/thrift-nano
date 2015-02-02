@@ -1,7 +1,6 @@
 #include <thrift-nano/types.h>
 #include <thrift-nano/mem.h>
 #include <string.h>
-#include "types.h"
 
 #define HASH_PRIME 37
 #define HASH_START 17
@@ -19,8 +18,9 @@ tn_error_str(tn_error_t t)
         case T_ERR_BUFFER_OVERFLOW:     return "BUFFER OVERFLOW";
         case T_ERR_BUFFER_UNDERFLOW:    return "BUFFER UNDERFLOW";
         case T_ERR_OK:					return "OK";
+        default: break;
     }
-    return "UNKNOWN ERROR";
+    return strerror(t);
 }
 
 static bool
@@ -210,7 +210,7 @@ tn_buffer_get(tn_buffer_t *mem, size_t len)
 size_t
 tn_buffer_ensure_cap(tn_buffer_t *mem, size_t len)
 {
-	if( mem->len - mem->pos <= len )
+	if( mem->cap - mem->pos <= len )
 	{
         tn_error_t error = T_ERR_OK;
 		size_t nl = mem->pos + len + 1;
@@ -220,16 +220,16 @@ tn_buffer_ensure_cap(tn_buffer_t *mem, size_t len)
             memcpy(newbuf, mem->buf, mem->pos);
             tn_free(mem->buf);
             mem->buf = newbuf;
-            mem->len = nl;
+            mem->cap = nl;
         }
         else
         {
-            len = MIN(len, mem->len - mem->pos);
+            len = MIN(len, mem->cap - mem->pos);
         }
 	}
 	else
 	{
-		len = MIN(len, mem->len - mem->pos);
+		len = MIN(len, mem->cap - mem->pos);
 	}
 	return len;
 }
@@ -247,6 +247,7 @@ tn_buffer_write(tn_buffer_t *mem, void *buf, size_t len)
 	len = tn_buffer_ensure_cap(mem, len);
 	memcpy(mem->buf+mem->pos, buf, len);
 	mem->pos += len;
+    mem->len = mem->pos;
     return len;
 }
 size_t
@@ -260,6 +261,7 @@ static void
 tn_buffer_reset(tn_object_t *self)
 {
 	((tn_buffer_t*)self)->pos = 0;
+    ((tn_buffer_t*)self)->len = 0;
 }
 tn_buffer_t *
 tn_buffer_init(tn_buffer_t *self, size_t bufferSize, tn_error_t *error)
@@ -271,7 +273,8 @@ tn_buffer_init(tn_buffer_t *self, size_t bufferSize, tn_error_t *error)
 		self->buf = tn_alloc(bufferSize, error);
 	}
 	self->pos = 0;
-	self->len = bufferSize;
+	self->len = 0;
+    self->cap = bufferSize;
 	return self;
 }
 tn_buffer_t *

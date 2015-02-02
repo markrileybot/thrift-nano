@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <errno.h>
 
 /* Macros for min/max.  */
 #ifndef MIN
@@ -18,14 +19,12 @@
 # define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
-typedef enum
-{
-    T_ERR_OK                        = 0,
-    T_ERR_ALLOC_FAILED              = 1024,
-    T_ERR_ALLOC_NOT_SUPPORTED       = 1025,
-    T_ERR_BUFFER_OVERFLOW           = 1026,
-    T_ERR_BUFFER_UNDERFLOW          = 1027
-} tn_error_t;
+typedef int tn_error_t;
+#define T_ERR_OK                        0
+#define T_ERR_ALLOC_FAILED              1024
+#define T_ERR_ALLOC_NOT_SUPPORTED       1025
+#define T_ERR_BUFFER_OVERFLOW           1026
+#define T_ERR_BUFFER_UNDERFLOW          1027
 const char* tn_error_str(tn_error_t t);
 
 /**
@@ -157,6 +156,7 @@ typedef struct
 	void *buf;
 	size_t pos;
 	size_t len;
+    size_t cap;
 } tn_buffer_t;
 void* tn_buffer_get(tn_buffer_t *mem, size_t len);
 size_t tn_buffer_skip(tn_buffer_t *mem, size_t len);
