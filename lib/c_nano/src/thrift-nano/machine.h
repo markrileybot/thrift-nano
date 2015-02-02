@@ -312,7 +312,10 @@
 # endif
 # define TN_OS_UNKNOWN
 # define TN_OS unknown
-# warning OS unsupported/unknown
+# ifndef TN_OS_WARN
+#  warning OS unknown.  This may be ok.  You will AT LEAST need to call tn_init yourself.
+#  define TN_OS_WARN
+# endif
 #endif
 
 #ifndef TN_OS_THREADS

@@ -26,17 +26,17 @@ tn_transport_write(tn_transport_t *self, void *buf, size_t len, tn_error_t *erro
 	return 0;
 }
 static void
-tn_transport_reset(tn_transport_t *self)
+tn_transport_reset(tn_object_t *self)
 {
 }
 tn_transport_t*
 tn_transport_init(tn_transport_t *self, tn_error_t *error)
 {
     self->parent.tn_destroy = &tn_transport_destroy;
+    self->parent.tn_reset = &tn_transport_reset;
 	self->tn_is_open = &tn_transport_is_open;
 	self->tn_read = &tn_transport_read;
 	self->tn_write = &tn_transport_write;
-    self->tn_reset = &tn_transport_reset;
 	return self;
 }
 tn_transport_t*
@@ -47,7 +47,7 @@ tn_transport_create(tn_error_t *error)
 	return tn_transport_init(t, error);
 }
 
-
+#if THRIFT_TRANSPORT_MEMORY
 static void
 tn_transport_memory_destroy(tn_object_t *t)
 {
@@ -79,9 +79,9 @@ tn_transport_memory_skip(tn_transport_t *self, size_t len, tn_error_t *error)
     return l;
 }
 static void
-tn_transport_memory_reset(tn_transport_t *self)
+tn_transport_memory_reset(tn_object_t *self)
 {
-	tn_buffer_reset(((tn_transport_memory_t*)self)->buf);
+	tn_object_reset(((tn_transport_memory_t*)self)->buf);
 }
 tn_transport_t *
 tn_transport_memory_init(tn_transport_memory_t *s, size_t bufferSize, tn_error_t *error)
@@ -89,10 +89,10 @@ tn_transport_memory_init(tn_transport_memory_t *s, size_t bufferSize, tn_error_t
 	tn_transport_t *self = (tn_transport_t*) s;
     tn_transport_init(self, error);
     self->parent.tn_destroy = &tn_transport_memory_destroy;
-	self->tn_read = &tn_transport_memory_read;
-	self->tn_write = &tn_transport_memory_write;
+    self->parent.tn_reset = &tn_transport_memory_reset;
+    self->tn_read = &tn_transport_memory_read;
+    self->tn_write = &tn_transport_memory_write;
     self->tn_skip = &tn_transport_memory_skip;
-    self->tn_reset = &tn_transport_memory_reset;
 	if( s->buf == NULL )
 	{
 		s->buf = tn_buffer_create(bufferSize, error);
@@ -104,6 +104,7 @@ tn_transport_memory_create(size_t bufferSize, tn_error_t *error)
 {
 	tn_transport_memory_t *t = tn_alloc(sizeof(tn_transport_memory_t), error);
 	if( *error != 0 ) return NULL;
+	t->buf = NULL;
 	return tn_transport_memory_init(t, bufferSize, error);
 }
 
@@ -114,7 +115,9 @@ tn_transport_memory_create_with_buffer(tn_buffer_t * buf, tn_error_t *error) {
     t->buf = buf;
     return tn_transport_memory_init(t, 0, error);
 }
+#endif
 
+#if THRIFT_TRANSPORT_FILE
 static void
 tn_transport_file_destroy(tn_object_t *t)
 {
@@ -184,7 +187,7 @@ tn_transport_file_create(FILE *fd, tn_error_t *error)
     if( *error != 0 ) return NULL;
     return tn_transport_file_init(t, fd, error);
 }
-
+#endif
 
 
 

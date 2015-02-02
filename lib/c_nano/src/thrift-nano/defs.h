@@ -1,0 +1,28 @@
+#ifndef __THRIFT_DEFS_H__
+#define __THRIFT_DEFS_H__
+
+#define THRIFT_ALLOC_DEF                    1
+#define THRIFT_PROTOCOL_BINARY_DEF          1
+#define THRIFT_PROTOCOL_COMPACT_DEF         1
+#define THRIFT_TRANSPORT_FILE_DEF           1
+#define THRIFT_TRANSPORT_MEMORY_DEF         1
+
+#include <thrift-nano/config.h>
+
+#ifndef THRIFT_ALLOC
+#define THRIFT_ALLOC                    THRIFT_ALLOC_DEF
+#endif
+#ifndef THRIFT_PROTOCOL_BINARY
+#define THRIFT_PROTOCOL_BINARY          THRIFT_PROTOCOL_BINARY_DEF
+#endif
+#ifndef THRIFT_PROTOCOL_COMPACT
+#define THRIFT_PROTOCOL_COMPACT         THRIFT_PROTOCOL_COMPACT_DEF
+#endif
+#ifndef THRIFT_TRANSPORT_FILE
+#define THRIFT_TRANSPORT_FILE           THRIFT_TRANSPORT_FILE_DEF
+#endif
+#ifndef THRIFT_TRANSPORT_MEMORY
+#define THRIFT_TRANSPORT_MEMORY         THRIFT_TRANSPORT_MEMORY_DEF
+#endif
+
+#endif

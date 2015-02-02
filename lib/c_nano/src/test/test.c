@@ -1,6 +1,9 @@
 
 #include <tn_package_name_test_types.h>
 #include <sys/time.h>
+#include <test/gen-c_nano/tn_package_name_test_types.h>
+#include <thrift-nano/types.h>
+#include <stdlib.h>
 
 #define CALLS 1000000
 //#define CALLS 100
@@ -228,6 +231,12 @@ create_structa()
 		printf("Failed to create map.  %s.\n", tn_error_str(error));
 		return NULL;
 	}
+	s->table = tn_map_create(sizeof(tn_buffer_t*), sizeof(tn_buffer_t*), T_STRING, T_STRING, 10, &error);
+	if(error != 0)
+	{
+		printf("Failed to create map.  %s.\n", tn_error_str(error));
+		return NULL;
+	}
 
 	tn_string_append(s->strprop, STRING1);
 	tn_string_append(s->strprop, STRING2);
@@ -248,6 +257,17 @@ create_structa()
 	for( i = 0; i < 20; i++ )
 	{
 		tn_map_put2(s->mapprop, &i, &i, &error);
+	}
+
+	char buf[10];
+	tn_buffer_t *key;
+	tn_buffer_t *val;
+	for( i = 0; i < 5; i++ )
+	{
+		snprintf(buf, 2, "%zu", i);
+		key = tn_string_create(buf, &error);
+		val = tn_string_create(buf, &error);
+		tn_map_put2(s->table, &key, &val, &error);
 	}
 	return s;
 }
@@ -300,7 +320,7 @@ int test_write_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_err
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-        transport->tn_reset(transport);
+		tn_object_reset(transport);
 		bytes = tn_struct_write(write_struct, protocol, transport, error);
 	}
     pos = ((tn_transport_memory_t*)transport)->buf->pos;
@@ -321,7 +341,7 @@ int test_read_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_erro
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-        transport->tn_reset(transport);
+		tn_object_reset(transport);
         bytes = tn_struct_read(read_struct, protocol, transport, error);
 	}
     pos = ((tn_transport_memory_t*)transport)->buf->pos;
@@ -347,6 +367,16 @@ int test_read_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_erro
 	{
 		e = tn_map_get(read_struct->mapprop, i);
 		printf(" %d = %d ", *((int16_t*)e->key), *((int16_t*)e->value));
+	}
+	printf("]\n");
+
+	printf("Test3 elem_count=%zu\t[", read_struct->table->kvs->elem_count);
+	size = read_struct->table->kvs->elem_count;
+	for( i = 0; i < size; i++ )
+	{
+		e = tn_map_get(read_struct->table, i);
+		printf(" %s = %s ", (const char*)(*((tn_buffer_t**)e->key))->buf,
+				(const char*)(*((tn_buffer_t**)e->value))->buf);
 	}
 	printf("]\n");
 

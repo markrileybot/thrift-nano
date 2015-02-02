@@ -6,11 +6,11 @@
 static tn_allocator_t *alloc;
 static tn_allocator_t malloc_allocator;
 
-#ifdef THRIFT_ALLOC
+#if THRIFT_ALLOC
 static void *
 tn_malloc_alloc(tn_allocator_t *self, size_t size, tn_error_t *error)
 {
-    return calloc(size, 1);
+	return malloc(size);
 }
 static void *
 tn_malloc_alloc_array(tn_allocator_t *self, size_t size, size_t count, tn_error_t *error)

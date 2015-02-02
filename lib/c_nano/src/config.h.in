@@ -12,10 +12,29 @@
 
 /**
  * Configurable things
+ * Note: If you modify this list you may want to update defs.h with defaults
  */
-#define THRIFT_ALLOC 1
-#define THRIFT_PROTOCOL_BINARY 1
-#define THRIFT_PROTOCOL_COMPACT 1
 
+/**
+ * Will you allow thrift_nano to allocate memory?
+ */
+#define THRIFT_ALLOC                    THRIFT_ALLOC_DEF
+/**
+ * Enabled binary protocol?
+ */
+#define THRIFT_PROTOCOL_BINARY          THRIFT_PROTOCOL_BINARY_DEF
+/**
+ * Enabled compact protocol? (requires binary)
+ */
+#define THRIFT_PROTOCOL_COMPACT         THRIFT_PROTOCOL_COMPACT_DEF
+
+/**
+ * Enabled file transport?
+ */
+#define THRIFT_TRANSPORT_FILE           THRIFT_TRANSPORT_FILE_DEF
+/**
+ * Enabled memory transport?
+ */
+#define THRIFT_TRANSPORT_MEMORY         THRIFT_TRANSPORT_MEMORY_DEF
 
 #endif /* __CONFIG_H__ */
