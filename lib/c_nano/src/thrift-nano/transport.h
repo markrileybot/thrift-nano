@@ -36,4 +36,18 @@ tn_transport_t* tn_transport_file_init(tn_transport_file_t *self, FILE *fd, tn_e
 tn_transport_t* tn_transport_file_create(FILE *fd, tn_error_t *error);
 #endif
 
+#if THRIFT_PROTOCOL_ASYNC
+typedef struct tn_transport_async_t
+{
+    tn_transport_t parent;
+    tn_transport_t *delegate;
+    tn_buffer_t *_buf;
+    size_t _lastSkipCount;
+    size_t _lastWriteCount;
+    bool _intx;
+} tn_transport_async_t;
+tn_transport_t* tn_transport_async_init(tn_transport_async_t *self, tn_error_t *error);
+tn_transport_t* tn_transport_async_create(tn_error_t *error);
+#endif
+
 #endif

@@ -4,8 +4,10 @@
 #define THRIFT_ALLOC_DEF                    1
 #define THRIFT_PROTOCOL_BINARY_DEF          1
 #define THRIFT_PROTOCOL_COMPACT_DEF         1
+#define THRIFT_PROTOCOL_ASYNC_DEF           1
 #define THRIFT_TRANSPORT_FILE_DEF           1
 #define THRIFT_TRANSPORT_MEMORY_DEF         1
+#define THRIFT_TRANSPORT_ASYNC_DEF          1
 
 #include <thrift-nano/config.h>
 
@@ -17,6 +19,9 @@
 #endif
 #ifndef THRIFT_PROTOCOL_COMPACT
 #define THRIFT_PROTOCOL_COMPACT         THRIFT_PROTOCOL_COMPACT_DEF
+#endif
+#ifndef THRIFT_PROTOCOL_ASYNC
+#define THRIFT_PROTOCOL_ASYNC           THRIFT_PROTOCOL_ASYNC_DEF
 #endif
 #ifndef THRIFT_TRANSPORT_FILE
 #define THRIFT_TRANSPORT_FILE           THRIFT_TRANSPORT_FILE_DEF

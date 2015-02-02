@@ -108,6 +108,30 @@ tn_protocol_t* tn_protocol_compact_create(tn_error_t *error);
 #endif
 #endif
 
+#if THRIFT_PROTOCOL_ASYNC
+// struct to keep last struct/field/etc
+typedef struct tn_protocol_async_state_t
+{
+    uint8_t position;
+    int16_t fieldId;
+    tn_type_t fieldType;
+    tn_type_t keyType;
+    tn_type_t elemType;
+    int32_t size;
+} tn_protocol_async_state_t;
+// async protocol
+typedef struct tn_protocol_async_t
+{
+    tn_protocol_t parent;
+    tn_protocol_t *delegate;
+    tn_list_t *_stateStack;
+    tn_protocol_async_state_t *_state;
+    tn_transport_async_t _asyncTransport;
+} tn_protocol_async_t;
+tn_protocol_t* tn_protocol_async_init(tn_protocol_async_t *protocol, tn_protocol_t *delegate, tn_error_t *error);
+tn_protocol_t* tn_protocol_async_create(tn_protocol_t *delegate, tn_error_t *error);
+#endif
+
 // utilities
 size_t
 tn_protocol_skip(tn_protocol_t *self, tn_transport_t *transport, tn_type_t type, tn_error_t *error);

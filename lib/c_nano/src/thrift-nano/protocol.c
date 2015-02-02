@@ -19,6 +19,10 @@
 #   else
 #       if __BYTE_ORDER == __LITTLE_ENDIAN
 #           include <byteswap.h>
+#include <tclDecls.h>
+#include <error.h>
+#include "types.h"
+
 #           define ntohll(x) bswap_64 (x)
 #           define ntohl(x)  bswap_32 (x)
 #           define ntohs(x)  bswap_16 (x)
@@ -926,6 +930,401 @@ tn_protocol_compact_create(tn_error_t *error)
     return tn_protocol_compact_init(protocol, error);
 }
 #endif
+#endif
+
+#ifdef THRIFT_PROTOCOL_ASYNC
+//==========================================================================
+//
+//  Async protocol
+//
+//==========================================================================
+
+#define _TN_ASYNC_DELEGATE_START(name) \
+    tn_protocol_async_t *name = (tn_protocol_async_t*) self; \
+    name->_asyncTransport.delegate = transport
+
+#define _TN_ASYNC_DELEGATE_DO(name, func, ...) \
+    name->delegate->func(name->delegate, (tn_transport_t*)&name->_asyncTransport, ##__VA_ARGS__)
+
+#define _TN_ASYNC_DELEGATE(name, func, ...) \
+    _TN_ASYNC_DELEGATE_START(name); \
+    return _TN_ASYNC_DELEGATE_DO(name, func, ##__VA_ARGS__);
+
+#define _TN_ASYNC_DELEGATE_TX_BEGIN(name) \
+    _TN_ASYNC_DELEGATE_START(name); \
+    name->_asyncTransport._intx = true
+
+#define _TN_ASYNC_DELEGATE_TX_END(name) \
+    name->_asyncTransport._intx = false; \
+    if(*error == T_ERR_OK) { \
+        tn_object_reset(name->_asyncTransport._readBuf); \
+    }
+
+static bool tn_protocol_async_state_started(tn_protocol_async_t *async) {
+    if (async->_stateStack != NULL && async->_stateStack->elem_count > 0) {
+        size_t pos = 0;
+        if (async->_state != NULL) {
+            pos = async->_state->position;
+        }
+        if (pos < async->_stateStack->elem_count - 1) {
+            async->_state = tn_list_get(async->_stateStack, pos+1);
+            return true;
+        }
+    }
+    return false;
+}
+
+static void tn_protocol_async_state_reset(tn_protocol_async_t *async) {
+    async->_state->elemType = T_STOP;
+    async->_state->fieldType = T_STOP;
+    async->_state->keyType = T_STOP;
+    async->_state->fieldId = 0;
+    async->_state->size = 0;
+}
+
+static void tn_protocol_async_state_push(tn_protocol_async_t *async, tn_error_t *error) {
+    async->_state = tn_list_append(async->_stateStack, error);
+    async->_state->position = (uint8_t) (async->_stateStack->elem_count - 1);
+    tn_protocol_async_state_reset(async);
+}
+
+static void tn_protocol_async_state_pop(tn_protocol_async_t *async) {
+    tn_list_pop(async->_stateStack);
+    if (async->_stateStack->elem_count > 0) {
+        async->_state = tn_list_get(async->_stateStack, async->_stateStack->elem_count-1);
+        async->_state->size--; // if we are reading a collection of structs we need to decrement the size counter
+    } else {
+        async->_state = NULL;
+    }
+}
+
+static size_t tn_protocol_async_write_struct_begin(tn_protocol_t *self, tn_transport_t *transport, void *s, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE_START(async);
+
+    // Have I started this struct?
+    if(tn_protocol_async_state_started(async) ) {
+        return 0;
+    }
+
+    // I haven't started this struct.  begin.
+    size_t ret = _TN_ASYNC_DELEGATE_DO(async, tn_write_struct_begin, s, error);
+
+    // prepare the struct read state if we read the struct begin
+    if (*error == T_ERR_OK) {
+        tn_protocol_async_state_push(async, error);
+    }
+    return ret;
+}
+static size_t tn_protocol_async_write_struct_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE_START(async);
+    tn_protocol_async_state_pop(async);
+    return _TN_ASYNC_DELEGATE_DO(async, tn_write_struct_end, error);
+}
+static size_t tn_protocol_async_write_field_begin(tn_protocol_t *self, tn_transport_t *transport, const char *fieldName, tn_type_t fieldType, int16_t fieldId, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE_START(async);
+    if (fieldId < async->_state->fieldId) {
+        // we've already written this field
+        return 0;
+    } else if(fieldId == async->_state->fieldId) {
+        // we've started this field, but haven't finished it
+        return 0;
+    }
+
+    return _TN_ASYNC_DELEGATE_DO(async, tn_write_field_begin, fieldName, fieldType, fieldId, error);
+}
+static size_t tn_protocol_async_write_field_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE_START(async);
+    tn_list_pop(async->_fieldStack);
+    return _TN_ASYNC_DELEGATE_DO(async, tn_write_field_end, error);
+}
+static size_t tn_protocol_async_write_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_list_t *list, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_list_begin, list, error);
+}
+static size_t tn_protocol_async_write_list_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_list_end, error);
+}
+static size_t tn_protocol_async_write_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_map_t *map, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_map_begin, map, error);
+}
+static size_t tn_protocol_async_write_map_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_map_end, error);
+}
+static size_t tn_protocol_async_write_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_bytes_begin, len, error);
+}
+static size_t tn_protocol_async_write_bytes_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_bytes_end, error);
+}
+static size_t tn_protocol_async_write_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *s, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_bytes, s, error);
+}
+static size_t tn_protocol_async_write_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t len, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_string_begin, len, error);
+}
+static size_t tn_protocol_async_write_string_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_string_end, error);
+}
+static size_t tn_protocol_async_write_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_string, v, error);
+}
+static size_t tn_protocol_async_write_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_int16, v, error);
+}
+static size_t tn_protocol_async_write_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_int32, v, error);
+}
+static size_t tn_protocol_async_write_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_int64, v, error);
+}
+static size_t tn_protocol_async_write_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_byte, v, error);
+}
+static size_t tn_protocol_async_write_double(tn_protocol_t *self, tn_transport_t *transport, double v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_double, v, error);
+}
+static size_t tn_protocol_async_write_bool(tn_protocol_t *self, tn_transport_t *transport, bool v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_write_bool, v, error);
+}
+static size_t tn_protocol_async_read_struct_begin(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE_START(async);
+
+    // Have I started this struct?
+    if (tn_protocol_async_state_started(async)) {
+        return 0;
+    }
+
+    // I haven't started this struct.  begin.
+    size_t ret = _TN_ASYNC_DELEGATE_DO(async, tn_read_struct_begin, error);
+
+    // prepare the struct read state if we read the struct begin
+    if(*error == T_ERR_OK) {
+        tn_protocol_async_state_push(async, error);
+    }
+    return ret;
+}
+static size_t tn_protocol_async_read_struct_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE_START(async);
+    tn_protocol_async_state_pop(async);
+    return _TN_ASYNC_DELEGATE_DO(async, tn_read_struct_end, error);
+}
+static size_t tn_protocol_async_read_field_begin(tn_protocol_t *self, tn_transport_t *transport, const char *fieldName, tn_type_t *fieldType, int16_t *fieldId, tn_error_t *error) {
+    size_t ret = 0;
+    _TN_ASYNC_DELEGATE_TX_BEGIN(async);
+    if (async->_state->fieldType == T_STOP) {
+        ret = _TN_ASYNC_DELEGATE_DO(async, tn_read_field_begin, fieldName, fieldType, fieldId, error);
+        if (*error == T_ERR_OK) {
+            async->_state->fieldType = *fieldType;
+            async->_state->fieldId = *fieldId;
+        }
+    } else {
+        // we've already started this field but we haven't finished.
+        *fieldType = async->_state->fieldType;
+        *fieldId = async->_state->fieldId;
+    }
+    _TN_ASYNC_DELEGATE_TX_END(async);
+    return ret;
+}
+static size_t tn_protocol_async_read_field_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    size_t ret = 0;
+    _TN_ASYNC_DELEGATE_TX_BEGIN(async);
+    ret = _TN_ASYNC_DELEGATE_DO(async, tn_read_field_end, error);
+    if (*error == T_ERR_OK) {
+        tn_protocol_async_state_reset(async);
+    }
+    _TN_ASYNC_DELEGATE_TX_END(async);
+    return ret;
+}
+static size_t tn_protocol_async_read_list_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *elemType, int32_t *size, tn_error_t *error) {
+    size_t ret = 0;
+    _TN_ASYNC_DELEGATE_TX_BEGIN(async);
+    if (async->_state->elemType == T_STOP) {
+        ret = _TN_ASYNC_DELEGATE_DO(async, tn_read_list_begin, elemType, size, error);
+        if (*error == T_ERR_OK) {
+            async->_state->elemType = *elemType;
+            async->_state->size = *size;
+        }
+    } else {
+        *elemType = async->_state->elemType;
+        *size = async->_state->size;
+    }
+    _TN_ASYNC_DELEGATE_TX_END(async);
+    return ret;
+}
+static size_t tn_protocol_async_read_list_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_list_end, error);
+}
+static size_t tn_protocol_async_read_map_begin(tn_protocol_t *self, tn_transport_t *transport, tn_type_t *keyType, tn_type_t *valueType, int32_t *size, tn_error_t *error) {
+    size_t ret = 0;
+    _TN_ASYNC_DELEGATE_TX_BEGIN(async);
+    if (async->_state->elemType == T_STOP) {
+        ret = _TN_ASYNC_DELEGATE_DO(async, tn_read_map_begin, keyType, valueType, size, error);
+        if (*error == T_ERR_OK) {
+            async->_state->elemType = *valueType;
+            async->_state->keyType = *keyType;
+            async->_state->size = *size;
+        }
+    } else {
+        *valueType = async->_state->elemType;
+        *keyType = async->_state->keyType;
+        *size = async->_state->size;
+    }
+    _TN_ASYNC_DELEGATE_TX_END(async);
+    return ret;
+}
+static size_t tn_protocol_async_read_map_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_map_end, error);
+}
+static size_t tn_protocol_async_read_bytes_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {
+    size_t ret = 0;
+    _TN_ASYNC_DELEGATE_TX_BEGIN(async);
+    if (async->_state->elemType == T_STOP) {
+        ret = _TN_ASYNC_DELEGATE_DO(async, tn_read_bytes_begin, len, error);
+        if (*error == T_ERR_OK) {
+            async->_state->size = *len;
+        }
+    } else {
+        async->_state->elemType = T_STRING;
+        *len = async->_state->size;
+    }
+    _TN_ASYNC_DELEGATE_TX_END(async);
+    return ret;
+}
+static size_t tn_protocol_async_read_bytes_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_bytes_end, error);
+}
+static size_t tn_protocol_async_read_bytes(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE_START(async);
+    size_t ret = _TN_ASYNC_DELEGATE_DO(async, tn_read_bytes, v, len, error);
+    async->_state->size -= ret;
+    return ret;
+}
+static size_t tn_protocol_async_read_string_begin(tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {
+    size_t ret = 0;
+    _TN_ASYNC_DELEGATE_TX_BEGIN(async);
+    if (async->_state->elemType == T_STOP) {
+        ret = _TN_ASYNC_DELEGATE_DO(async, tn_read_string_begin, len, error);
+        if (*error == T_ERR_OK) {
+            async->_state->size = *len;
+        }
+    } else {
+        async->_state->elemType = T_STRING;
+        *len = async->_state->size;
+    }
+    _TN_ASYNC_DELEGATE_TX_END(async);
+    return ret;
+}
+static size_t tn_protocol_async_read_string_end(tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_string_end, error);
+}
+static size_t tn_protocol_async_read_string(tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE_START(async);
+    size_t ret = _TN_ASYNC_DELEGATE_DO(async, tn_read_string, v, len, error);
+    async->_state->size -= ret;
+    return ret;
+}
+static size_t tn_protocol_async_read_int16(tn_protocol_t *self, tn_transport_t *transport, int16_t *v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_int16, v, error)
+}
+static size_t tn_protocol_async_read_int32(tn_protocol_t *self, tn_transport_t *transport, int32_t *v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_int32, v, error);
+}
+static size_t tn_protocol_async_read_int64(tn_protocol_t *self, tn_transport_t *transport, int64_t *v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_int64, v, error);
+}
+static size_t tn_protocol_async_read_byte(tn_protocol_t *self, tn_transport_t *transport, int8_t *v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_byte, v, error);
+}
+static size_t tn_protocol_async_read_double(tn_protocol_t *self, tn_transport_t *transport, double *v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_double, v, error);
+}
+static size_t tn_protocol_async_read_bool(tn_protocol_t *self, tn_transport_t *transport, bool *v, tn_error_t *error) {
+    _TN_ASYNC_DELEGATE(async, tn_read_bool, v, error);
+}
+static void tn_protocol_async_destroy(tn_object_t *t) {
+    tn_protocol_async_t *protocol = (tn_protocol_async_t *) t;
+    tn_object_destroy(protocol->delegate);
+    tn_object_destroy(protocol->_stateStack);
+    protocol->_state = NULL;
+    tn_free(t);
+}
+static void tn_protocol_async_reset(tn_object_t* t) {
+    tn_protocol_async_t *protocol = (tn_protocol_async_t *) t;
+    tn_object_reset(protocol->delegate);
+}
+tn_protocol_t*
+tn_protocol_async_init(tn_protocol_async_t *cproto, tn_protocol_t *delegate, tn_error_t *error)
+{
+    cproto->delegate = delegate;
+    tn_protocol_t *protocol = (tn_protocol_t *) cproto;
+    protocol->block_container_io     = false;
+    protocol->parent.tn_destroy      = &tn_protocol_async_destroy;
+    protocol->parent.tn_reset        = &tn_protocol_async_reset;
+    protocol->tn_write_field_begin   = &tn_protocol_async_write_field_begin;
+    protocol->tn_write_field_end     = &tn_protocol_async_write_field_end;
+    protocol->tn_write_struct_begin  = &tn_protocol_async_write_struct_begin;
+    protocol->tn_write_struct_end    = &tn_protocol_async_write_struct_end;
+    protocol->tn_write_list_begin    = &tn_protocol_async_write_list_begin;
+    protocol->tn_write_list_end      = &tn_protocol_async_write_list_end;
+    protocol->tn_write_map_begin     = &tn_protocol_async_write_map_begin;
+    protocol->tn_write_map_end       = &tn_protocol_async_write_map_end;
+    protocol->tn_write_bytes_begin   = &tn_protocol_async_write_bytes_begin;
+    protocol->tn_write_bytes_end     = &tn_protocol_async_write_bytes_end;
+    protocol->tn_write_bytes         = &tn_protocol_async_write_bytes;
+    protocol->tn_write_string_begin  = &tn_protocol_async_write_string_begin;
+    protocol->tn_write_string_end    = &tn_protocol_async_write_string_end;
+    protocol->tn_write_string        = &tn_protocol_async_write_string;
+    protocol->tn_write_int16         = &tn_protocol_async_write_int16;
+    protocol->tn_write_int32         = &tn_protocol_async_write_int32;
+    protocol->tn_write_int64         = &tn_protocol_async_write_int64;
+    protocol->tn_write_byte          = &tn_protocol_async_write_byte;
+    protocol->tn_write_double        = &tn_protocol_async_write_double;
+    protocol->tn_write_bool	         = &tn_protocol_async_write_bool;
+    protocol->tn_write_size          = &tn_protocol_async_write_int32;
+
+    protocol->tn_read_field_begin    = &tn_protocol_async_read_field_begin;
+    protocol->tn_read_field_end      = &tn_protocol_async_read_field_end;
+    protocol->tn_read_struct_begin   = &tn_protocol_async_read_struct_begin;
+    protocol->tn_read_struct_end     = &tn_protocol_async_read_struct_end;
+    protocol->tn_read_list_begin     = &tn_protocol_async_read_list_begin;
+    protocol->tn_read_list_end       = &tn_protocol_async_read_list_end;
+    protocol->tn_read_map_begin      = &tn_protocol_async_read_map_begin;
+    protocol->tn_read_map_end        = &tn_protocol_async_read_map_end;
+    protocol->tn_read_bytes_begin    = &tn_protocol_async_read_bytes_begin;
+    protocol->tn_read_bytes_end      = &tn_protocol_async_read_bytes_end;
+    protocol->tn_read_bytes          = &tn_protocol_async_read_bytes;
+    protocol->tn_read_string_begin   = &tn_protocol_async_read_string_begin;
+    protocol->tn_read_string_end     = &tn_protocol_async_read_string_end;
+    protocol->tn_read_string         = &tn_protocol_async_read_string;
+    protocol->tn_read_int16          = &tn_protocol_async_read_int16;
+    protocol->tn_read_int32          = &tn_protocol_async_read_int32;
+    protocol->tn_read_int64          = &tn_protocol_async_read_int64;
+    protocol->tn_read_byte           = &tn_protocol_async_read_byte;
+    protocol->tn_read_double         = &tn_protocol_async_read_double;
+    protocol->tn_read_bool	         = &tn_protocol_async_read_bool;
+    protocol->tn_read_size           = &tn_protocol_async_read_int32;
+
+    if( cproto->_stateStack == NULL ) {
+        cproto->_stateStack = tn_list_create(sizeof(tn_protocol_async_state_t), 4, 0, error);
+    }
+    tn_transport_async_init(&cproto->_asyncTransport, error);
+    return protocol;
+}
+void
+tn_protocol_async_flush(tn_protocol_async_t *protocol) {
+    tn_object_reset(protocol);
+    tn_object_reset(&protocol->_asyncTransport);
+    tn_object_reset(protocol->_stateStack);
+    protocol->_state = NULL;
+}
+tn_protocol_t*
+tn_protocol_async_create(tn_protocol_t *delegate, tn_error_t *error)
+{
+    tn_protocol_async_t *protocol = tn_alloc(sizeof(tn_protocol_async_t), error);
+    if( *error != 0 ) return NULL;
+    protocol->_stateStack = NULL;
+    protocol->_state = NULL;
+    return tn_protocol_async_init(protocol, delegate, error);
+}
 #endif
 
 

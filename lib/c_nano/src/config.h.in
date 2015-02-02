@@ -27,7 +27,10 @@
  * Enabled compact protocol? (requires binary)
  */
 #define THRIFT_PROTOCOL_COMPACT         THRIFT_PROTOCOL_COMPACT_DEF
-
+/**
+* Enabled async protocol? (requires async transport)
+*/
+#define THRIFT_PROTOCOL_ASYNC          THRIFT_PROTOCOL_ASYNC_DEF
 /**
  * Enabled file transport?
  */
