@@ -23,6 +23,7 @@ typedef struct tn_transport_memory_t
 } tn_transport_memory_t;
 tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self, size_t bufferSize, tn_error_t *error);
 tn_transport_t* tn_transport_memory_create(size_t bufferSize, tn_error_t *error);
+tn_transport_t* tn_transport_memory_create_with_buffer(tn_buffer_t * buf, tn_error_t *error);
 
 typedef struct tn_transport_file_t
 {

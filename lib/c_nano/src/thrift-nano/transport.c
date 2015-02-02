@@ -107,6 +107,13 @@ tn_transport_memory_create(size_t bufferSize, tn_error_t *error)
 	return tn_transport_memory_init(t, bufferSize, error);
 }
 
+tn_transport_t*
+tn_transport_memory_create_with_buffer(tn_buffer_t * buf, tn_error_t *error) {
+    tn_transport_memory_t *t = tn_alloc(sizeof(tn_transport_memory_t), error);
+    if( *error != 0 ) return NULL;
+    t->buf = buf;
+    return tn_transport_memory_init(t, 0, error);
+}
 
 static void
 tn_transport_file_destroy(tn_object_t *t)

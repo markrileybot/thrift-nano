@@ -81,7 +81,7 @@ static size_t tn_protocol_read_map_end          (tn_protocol_t *self, tn_transpo
 static size_t tn_protocol_read_bytes_begin      (tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_bytes_end        (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_bytes            (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {return 0;}
-static size_t tn_protocol_read_string_begin     (tn_protocol_t *self, tn_transport_t *transport, size_t *len, tn_error_t *error) {return 0;}
+static size_t tn_protocol_read_string_begin     (tn_protocol_t *self, tn_transport_t *transport, int32_t *len, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_string_end       (tn_protocol_t *self, tn_transport_t *transport, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_string           (tn_protocol_t *self, tn_transport_t *transport, tn_buffer_t *v, int32_t len, tn_error_t *error) {return 0;}
 static size_t tn_protocol_read_int16            (tn_protocol_t *self, tn_transport_t *transport, int16_t *v, tn_error_t *error) {return 0;}

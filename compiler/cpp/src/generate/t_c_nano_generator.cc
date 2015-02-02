@@ -2057,9 +2057,10 @@ void t_c_nano_generator::generate_serialize_container(ofstream &out,
 		t_type *telem = ((t_list *) ttype)->get_elem_type();
 		string telem_name = type_name (telem);
 		string vlocal = tmp("v");
-
-		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_list_begin(protocol, transport, "<< prefix <<", error));" << endl;
+		indent(out) << "{";
+		indent_up();
 		indent(out) << telem_name << " *" << vlocal << ";" << endl;
+		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_list_begin(protocol, transport, "<< prefix <<", error));" << endl;
 		indent(out) << "size = " << prefix << "->elem_count;" << endl;
 
 		// block io support
@@ -2089,6 +2090,8 @@ void t_c_nano_generator::generate_serialize_container(ofstream &out,
 		}
 
 		indent(out) << "return_if_fail_or_inc(ret, protocol->tn_write_list_end(protocol, transport, error));" << endl;
+		indent_down();
+		indent(out) << "}";
 	}
 }
 

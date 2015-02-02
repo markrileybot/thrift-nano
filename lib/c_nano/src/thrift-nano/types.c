@@ -173,7 +173,9 @@ tn_list_pop(tn_list_t *list)
 static void
 tn_buffer_destroy(tn_object_t *self)
 {
-    tn_free(((tn_buffer_t*)self)->buf);
+	if ( !((tn_buffer_t*)self)->user_buffer ) {
+    	tn_free(((tn_buffer_t*)self)->buf);
+	}
     tn_free(self);
 }
 void *
@@ -187,6 +189,10 @@ tn_buffer_get(tn_buffer_t *mem, size_t len)
 size_t
 tn_buffer_ensure_cap(tn_buffer_t *mem, size_t len)
 {
+	if ( mem->user_buffer ) {
+		//We don't resize user provided buffers, these should only be used for reading
+		return 0;
+	}
 	if( mem->len - mem->pos <= len )
 	{
         tn_error_t error = T_ERR_OK;
@@ -221,6 +227,10 @@ tn_buffer_read(tn_buffer_t *mem, void *buf, size_t len)
 size_t
 tn_buffer_write(tn_buffer_t *mem, void *buf, size_t len)
 {
+	if ( mem->user_buffer ) {
+		//We don't write to user provided buffers, these should only be used for reading
+		return 0;
+	}
 	len = tn_buffer_ensure_cap(mem, len);
 	memcpy(mem->buf+mem->pos, buf, len);
 	mem->pos += len;
@@ -256,9 +266,19 @@ tn_buffer_create(size_t bufferSize, tn_error_t *error)
 	tn_buffer_t *t = tn_alloc(sizeof(tn_buffer_t), error);
     if( *error != 0 ) return NULL;
 	t->buf = NULL;
+	t->user_buffer = false;
 	return tn_buffer_init(t, bufferSize, error);
 }
+tn_buffer_t*
+tn_buffer_create_from_mem(size_t bufferSize, tn_error_t *error, void * buffer)
+{
 
+	tn_buffer_t *t = tn_alloc(sizeof(tn_buffer_t), error);
+    if( *error != 0 ) return NULL;
+	t->buf = buffer;
+	t->user_buffer = true;
+	return tn_buffer_init(t, bufferSize, error);
+}
 tn_buffer_t *
 tn_string_create(const char *str, tn_error_t *error)
 {
