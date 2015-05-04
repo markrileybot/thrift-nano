@@ -36,5 +36,9 @@
  * Enabled memory transport?
  */
 #define THRIFT_TRANSPORT_MEMORY         THRIFT_TRANSPORT_MEMORY_DEF
+/**
+* Enabled buffering transport?
+*/
+#define THRIFT_TRANSPORT_BUFFER         THRIFT_TRANSPORT_BUFFER_DEF
 
 #endif /* __CONFIG_H__ */

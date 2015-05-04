@@ -181,5 +181,131 @@ tn_transport_file_create(FILE *fd, tn_error_t *error)
 }
 #endif
 
+#if THRIFT_TRANSPORT_BUFFER
+static void
+tn_transport_buffer_reset(tn_object_t *self)
+{
+    tn_transport_buffer_t *buf = (tn_transport_buffer_t*)self;
+    buf->buf->pos = 0;
+}
+static void
+tn_transport_buffer_destroy(tn_object_t *t)
+{
+    tn_transport_buffer_t *buf = (tn_transport_buffer_t*)t;
+    if(buf->delegate != NULL) {
+        tn_object_destroy(buf->delegate);
+        buf->delegate = NULL;
+    }
+    if(buf->buf) {
+        tn_object_destroy(buf->buf);
+        buf->buf = NULL;
+    }
+    tn_free(t);
+}
+static size_t
+tn_transport_buffer_read(tn_transport_t *t, void *buf, size_t len, tn_error_t *error)
+{
+    tn_transport_buffer_t *self = (tn_transport_buffer_t*)t;
+    size_t l = 0, d = 0;
+    size_t remaining = self->buf->len - self->buf->pos;
+    if( remaining > 0 ) {
+        l = tn_buffer_read(self->buf, buf, MIN(remaining, len));
+    }
+    if(len - l > 0) {
+        d = self->delegate->tn_read(self->delegate, buf+l, len-l, error);
+        tn_buffer_write(self->buf, buf+l, d);
+        l += d;
+        if(l < len) {
+            *error = EAGAIN;
+        }
+    }
+    return l;
+}
+static size_t
+tn_transport_buffer_skip(tn_transport_t *t, size_t len, tn_error_t *error)
+{
+    tn_transport_buffer_t *self = (tn_transport_buffer_t*)t;
+    size_t l = 0, d = 0;
+    size_t remaining = self->buf->len - self->buf->pos;
+    if( remaining > 0 ) {
+        l = tn_buffer_skip(self->buf, MIN(remaining, len));
+    }
+    if(len - l > 0) {
+        remaining = self->buf->pos;
+        d = self->delegate->tn_read(self->delegate, tn_buffer_get(self->buf, len-l), len-l, error);
+        l += d;
+        if(l < len) {
+            self->buf->pos = remaining + d;
+            *error = EAGAIN;
+        }
+    }
+    return l;
+}
+static size_t
+tn_transport_buffer_write(tn_transport_t *t, void *buf, size_t len, tn_error_t *error)
+{
+    tn_transport_buffer_t *self = (tn_transport_buffer_t*)t;
+    size_t l = 0;
+    self->buf->pos = self->buf->len;
+    if(self->buf->pos > 0) {
+        l = tn_buffer_write(self->buf, buf, len);
+    } else {
+        l = self->delegate->tn_write(self->delegate, buf, len, error);
+        if(l < len) {
+            tn_buffer_write(self->buf, buf+l, len-1);
+        }
+    }
+    self->buf->pos = 0;
+    return l;
+}
+tn_transport_t*
+tn_transport_buffer_init(tn_transport_buffer_t *self, tn_transport_t *delegate, tn_error_t *error)
+{
+    if(self->delegate != NULL) {
+        tn_object_destroy(self->delegate);
+        self->delegate = NULL;
+    }
+    self->delegate = delegate;
+    if(self->buf == NULL) {
+        self->buf = tn_buffer_create(32, error);
+    }
+    tn_transport_t *p = (tn_transport_t*) self;
+    p->parent.tn_destroy = &tn_transport_buffer_destroy;
+    p->parent.tn_reset = &tn_transport_buffer_reset;
+    p->tn_read = &tn_transport_buffer_read;
+    p->tn_write = &tn_transport_buffer_write;
+    p->tn_skip = &tn_transport_buffer_skip;
+    return p;
+}
+tn_transport_t*
+tn_transport_buffer_create(tn_transport_t *delegate, tn_error_t *error)
+{
+    tn_transport_buffer_t *t = tn_alloc(sizeof(tn_transport_buffer_t), error);
+    if( *error != 0 ) return NULL;
+    t->delegate = NULL;
+    t->buf = NULL;
+    return tn_transport_buffer_init(t, delegate, error);
+}
+size_t
+tn_transport_buffer_flush(tn_transport_t *t, tn_error_t *error)
+{
+    tn_transport_buffer_t *self = (tn_transport_buffer_t*)t;
+    size_t l = 0;
+    size_t remaining = self->buf->len - self->buf->pos;
+    if(remaining > 0) {
+        l = self->delegate->tn_write(self->delegate, self->buf->buf+self->buf->pos, remaining, error);
+        self->buf->pos += l;
+        if(*error == T_ERR_OK && l < remaining) {
+            *error = EAGAIN;
+        }
+    }
+    if(*error == T_ERR_OK) {
+        tn_object_reset(self->buf);
+        tn_object_reset(self->delegate);
+    }
+    return l;
+}
+#endif
+
 
 

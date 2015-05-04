@@ -260,8 +260,8 @@ tn_buffer_skip(tn_buffer_t *mem, size_t len)
 static void
 tn_buffer_reset(tn_object_t *self)
 {
-	((tn_buffer_t*)self)->pos = 0;
-    ((tn_buffer_t*)self)->len = 0;
+    tn_buffer_t *b = (tn_buffer_t*)self;
+    b->pos = b->len = 0;
 }
 tn_buffer_t *
 tn_buffer_init(tn_buffer_t *self, size_t bufferSize, tn_error_t *error)

@@ -6,6 +6,7 @@
 #define THRIFT_PROTOCOL_COMPACT_DEF         1
 #define THRIFT_TRANSPORT_FILE_DEF           1
 #define THRIFT_TRANSPORT_MEMORY_DEF         1
+#define THRIFT_TRANSPORT_BUFFER_DEF         1
 
 #include <thrift-nano/config.h>
 
@@ -23,6 +24,9 @@
 #endif
 #ifndef THRIFT_TRANSPORT_MEMORY
 #define THRIFT_TRANSPORT_MEMORY         THRIFT_TRANSPORT_MEMORY_DEF
+#endif
+#ifndef THRIFT_TRANSPORT_BUFFER
+#define THRIFT_TRANSPORT_BUFFER         THRIFT_TRANSPORT_BUFFER_DEF
 #endif
 
 #endif

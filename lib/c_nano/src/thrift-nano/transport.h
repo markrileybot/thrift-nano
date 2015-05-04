@@ -20,7 +20,7 @@ tn_transport_t* tn_transport_create(tn_error_t *error);
 typedef struct tn_transport_memory_t
 {
 	tn_transport_t parent;
-	tn_buffer_t* buf;
+	tn_buffer_t *buf;
 } tn_transport_memory_t;
 tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self, size_t bufferSize, tn_error_t *error);
 tn_transport_t* tn_transport_memory_create(size_t bufferSize, tn_error_t *error);
@@ -34,6 +34,18 @@ typedef struct tn_transport_file_t
 } tn_transport_file_t;
 tn_transport_t* tn_transport_file_init(tn_transport_file_t *self, FILE *fd, tn_error_t *error);
 tn_transport_t* tn_transport_file_create(FILE *fd, tn_error_t *error);
+#endif
+
+#if THRIFT_TRANSPORT_BUFFER
+typedef struct tn_transport_buffer_t
+{
+    tn_transport_t parent;
+    tn_transport_t *delegate;
+    tn_buffer_t *buf;
+} tn_transport_buffer_t;
+tn_transport_t* tn_transport_buffer_init(tn_transport_buffer_t *self, tn_transport_t *delegate, tn_error_t *error);
+tn_transport_t* tn_transport_buffer_create(tn_transport_t *delegate, tn_error_t *error);
+size_t tn_transport_buffer_flush(tn_transport_t *self, tn_error_t *error);
 #endif
 
 #endif
