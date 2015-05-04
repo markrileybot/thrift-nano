@@ -6,37 +6,43 @@
 const static int TN_FT_MAX_CHUNK_SIZE = 256;
 
 static void
-tn_transport_destroy(tn_object_t *t)
+tn_transport_base_destroy(tn_object_t *t)
 {
     tn_free(t);
 }
 static bool
-tn_transport_is_open(tn_transport_t *self)
+tn_transport_base_is_open(tn_transport_t *self)
 {
 	return true;
 }
 static size_t
-tn_transport_read(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
+tn_transport_base_read(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
 {
 	return 0;
 }
 static size_t
-tn_transport_write(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
+tn_transport_base_write(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
 {
 	return 0;
 }
+static size_t
+tn_transport_base_skip(tn_transport_t *self, size_t len, tn_error_t *error)
+{
+    return 0;
+}
 static void
-tn_transport_reset(tn_object_t *self)
+tn_transport_base_reset(tn_object_t *self)
 {
 }
 tn_transport_t*
 tn_transport_init(tn_transport_t *self, tn_error_t *error)
 {
-    self->parent.tn_destroy = &tn_transport_destroy;
-    self->parent.tn_reset = &tn_transport_reset;
-	self->tn_is_open = &tn_transport_is_open;
-	self->tn_read = &tn_transport_read;
-	self->tn_write = &tn_transport_write;
+    self->parent.tn_destroy = &tn_transport_base_destroy;
+    self->parent.tn_reset = &tn_transport_base_reset;
+	self->tn_is_open = &tn_transport_base_is_open;
+	self->tn_read = &tn_transport_base_read;
+	self->tn_write = &tn_transport_base_write;
+    self->tn_skip = &tn_transport_base_skip;
 	return self;
 }
 tn_transport_t*
@@ -46,7 +52,26 @@ tn_transport_create(tn_error_t *error)
 	if( *error != 0 ) return NULL;
 	return tn_transport_init(t, error);
 }
-
+bool
+tn_transport_is_open(tn_transport_t *self)
+{
+    return self->tn_is_open(self);
+}
+size_t
+tn_transport_read(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
+{
+    return self->tn_read(self, buf, len, error);
+}
+size_t
+tn_transport_write(tn_transport_t *self, void *buf, size_t len, tn_error_t *error)
+{
+    return self->tn_write(self, buf, len, error);
+}
+size_t
+tn_transport_skip(tn_transport_t *self, size_t len, tn_error_t *error)
+{
+    return self->tn_skip(self, len, error);
+}
 #if THRIFT_TRANSPORT_MEMORY
 static void
 tn_transport_memory_destroy(tn_object_t *t)

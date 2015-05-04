@@ -15,6 +15,10 @@ typedef struct tn_transport_t
 } tn_transport_t;
 tn_transport_t* tn_transport_init(tn_transport_t *self, tn_error_t *error);
 tn_transport_t* tn_transport_create(tn_error_t *error);
+bool tn_is_open(tn_transport_t *self);
+size_t tn_transport_read(tn_transport_t *self, void *buf, size_t len, tn_error_t *error);
+size_t tn_transport_write(tn_transport_t *self, void *buf, size_t len, tn_error_t *error);
+size_t tn_transport_skip(tn_transport_t *self, size_t len, tn_error_t *error);
 
 #if THRIFT_TRANSPORT_MEMORY
 typedef struct tn_transport_memory_t
