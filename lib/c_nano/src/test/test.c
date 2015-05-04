@@ -320,6 +320,7 @@ int test_write_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_err
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
+		tn_object_reset(protocol);
 		tn_object_reset(transport);
 		bytes = tn_struct_write(write_struct, protocol, transport, error);
 	}
@@ -341,7 +342,8 @@ int test_read_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_erro
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-		tn_object_reset(transport);
+		((tn_transport_memory_t*)transport)->buf->pos = 0;
+		tn_object_reset(protocol);
         bytes = tn_struct_read(read_struct, protocol, transport, error);
 	}
     pos = ((tn_transport_memory_t*)transport)->buf->pos;
