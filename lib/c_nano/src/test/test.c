@@ -342,7 +342,7 @@ int test_read_abunch(tn_protocol_t *protocol, tn_transport_t *transport, tn_erro
 	gettimeofday(&start, NULL);
 	for( i = 0; i < CALLS; i++ )
 	{
-		((tn_transport_memory_t*)transport)->buf->pos = 0;
+		tn_transport_memory_rewind(((tn_transport_memory_t*)transport));
 		tn_object_reset(protocol);
         bytes = tn_struct_read(read_struct, protocol, transport, error);
 	}

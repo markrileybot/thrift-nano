@@ -28,6 +28,7 @@ typedef struct tn_transport_memory_t
 } tn_transport_memory_t;
 tn_transport_t* tn_transport_memory_init(tn_transport_memory_t *self, size_t bufferSize, tn_error_t *error);
 tn_transport_t* tn_transport_memory_create(size_t bufferSize, tn_error_t *error);
+void tn_transport_memory_rewind(tn_transport_memory_t *self);
 #endif
 
 #if THRIFT_TRANSPORT_FILE

@@ -2,6 +2,7 @@
 #include <thrift-nano/types.h>
 #include <thrift-nano/transport.h>
 #include <thrift-nano/mem.h>
+#include "types.h"
 
 const static int TN_FT_MAX_CHUNK_SIZE = 256;
 
@@ -131,6 +132,11 @@ tn_transport_memory_create(size_t bufferSize, tn_error_t *error)
 	if( *error != 0 ) return NULL;
 	t->buf = NULL;
 	return tn_transport_memory_init(t, bufferSize, error);
+}
+void
+tn_transport_memory_rewind(tn_transport_memory_t *self)
+{
+    self->buf->pos = 0;
 }
 #endif
 
