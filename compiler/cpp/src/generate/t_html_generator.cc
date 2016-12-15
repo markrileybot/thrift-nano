@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <sstream>
 #include "t_generator.h"
+#include "t_html_generator.h"
 #include "platform.h"
 
 using std::map;
@@ -38,22 +39,6 @@ using std::stringstream;
 using std::vector;
 
 static const string endl = "\n";  // avoid ostream << std::endl flushes
-static const string HDR_PROGRAM = "# ";
-static const string HDR_SECTION = "## ";
-static const string HDR_ENUM = "### ";
-static const string HDR_CONST = "### ";
-static const string HDR_TYPDEF = "### ";
-static const string HDR_STRUCT = "### ";
-static const string HDR_SERVICE = "### ";
-static const string HDR_FUNCTION = "#### ";
-static const string HDR_ARGS = "##### ";
-static const string HDR_DEF = "##### ";
-
-
-/* forward declarations */
-static string ltrim(string name);
-static string rtrim(string name);
-static string trim(string name);
 
 enum input_type { INPUT_UNKNOWN, INPUT_UTF8, INPUT_PLAIN };
 
@@ -62,9 +47,9 @@ enum input_type { INPUT_UNKNOWN, INPUT_UTF8, INPUT_PLAIN };
  *
  * mostly copy/pasting/tweaking from mcslee's work.
  */
-class t_md_generator : public t_generator {
+class t_html_generator : public t_generator {
  public:
-  t_md_generator(
+  t_html_generator(
       t_program* program,
       const std::map<std::string, std::string>& parsed_options,
       const std::string& option_string)
@@ -72,8 +57,12 @@ class t_md_generator : public t_generator {
   {
     (void) parsed_options;
     (void) option_string;  
-    out_dir_base_ = "gen-md";
+    out_dir_base_ = "gen-html";
     input_type_ = INPUT_UNKNOWN;
+    
+    std::map<std::string, std::string>::const_iterator iter;
+    iter = parsed_options.find("standalone");
+    standalone_ = (iter != parsed_options.end());
     
     escape_.clear();
     escape_['&']  = "&amp;";
@@ -93,6 +82,9 @@ class t_md_generator : public t_generator {
   void generate_index();
   std::string escape_html(std::string const & str);
   std::string escape_html_tags(std::string const & str);
+  void generate_css();
+  void generate_css_content(std::ofstream & f_target);
+  void generate_style_tag();
   std::string make_file_link( std::string name);
   bool is_utf8_sequence(std::string const & str, size_t firstpos);
   void detect_input_encoding(std::string const & str, size_t firstpos);
@@ -115,20 +107,22 @@ class t_md_generator : public t_generator {
   void print_fn_args_doc(t_function* tfunction);
 
  private:
-  string to_lower_case(string name);
   std::ofstream f_out_;
   std::string  current_file_;
   input_type input_type_;
   std::map<std::string, int> allowed_markup; 
+  bool standalone_; 
 };
 
 
 /**
  * Emits the Table of Contents links at the top of the module's page
  */
-void t_md_generator::generate_program_toc() {
+void t_html_generator::generate_program_toc() {
+  f_out_ << "<table class=\"table-bordered table-striped table-condensed\"><thead><th>Module</th><th>Services</th>"
+   << "<th>Data types</th><th>Constants</th></thead>" << endl;
   generate_program_toc_row(program_);
-  f_out_ << endl;
+  f_out_ << "</table>" << endl;
 }
 
 
@@ -137,7 +131,7 @@ void t_md_generator::generate_program_toc() {
  * for each discovered program exactly once by maintaining the list of
  * completed rows in 'finished'
  */
-void t_md_generator::generate_program_toc_rows(t_program* tprog,
+void t_html_generator::generate_program_toc_rows(t_program* tprog,
          std::vector<t_program*>& finished) {
   for (vector<t_program*>::iterator iter = finished.begin();
        iter != finished.end(); iter++) {
@@ -157,111 +151,151 @@ void t_md_generator::generate_program_toc_rows(t_program* tprog,
 /**
  * Emits the Table of Contents links at the top of the module's page
  */
-void t_md_generator::generate_program_toc_row(t_program* tprog) {
-  string fname = tprog->get_name() + ".md";
-  f_out_ << HDR_PROGRAM << tprog->get_name() << endl << endl;
-  f_out_ << "([Home](README.md))" << endl;
+void t_html_generator::generate_program_toc_row(t_program* tprog) {
+  string fname = tprog->get_name() + ".html";
+  f_out_ << "<tr>" << endl << "<td>" << tprog->get_name() << "</td><td>";
   if (!tprog->get_services().empty()) {
-	f_out_ << "* " << "[Services](" << make_file_link(fname) << "#services)" << endl;
     vector<t_service*> services = tprog->get_services();
     vector<t_service*>::iterator sv_iter;
     for (sv_iter = services.begin(); sv_iter != services.end(); ++sv_iter) {
       string name = get_service_name(*sv_iter);
-      f_out_ << "  * [" << name << "]" << "(" << make_file_link(fname) << "#" << to_lower_case(name) << ")" << endl;
+      f_out_ << "<a href=\"" << make_file_link(fname) << "#Svc_" << name << "\">" << name
+        << "</a><br/>" << endl;
+      f_out_ << "<ul>" << endl;
       map<string,string> fn_html;
       vector<t_function*> functions = (*sv_iter)->get_functions();
       vector<t_function*>::iterator fn_iter;
       for (fn_iter = functions.begin(); fn_iter != functions.end(); ++fn_iter) {
         string fn_name = (*fn_iter)->get_name();
-        f_out_ <<  "    * [" + fn_name + "](" + make_file_link(fname) + "#" + to_lower_case(name) + ")" << endl;
+        string html = "<li><a href=\"" + make_file_link(fname) + "#Fn_" + name + "_" +
+          fn_name + "\">" + fn_name + "</a></li>";
+        fn_html.insert(pair<string,string>(fn_name, html));
       }
+      for (map<string,string>::iterator html_iter = fn_html.begin();
+        html_iter != fn_html.end(); html_iter++) {
+        f_out_ << html_iter->second << endl;
+      }
+      f_out_ << "</ul>" << endl;
     }
   }
-  f_out_ << endl << endl;
+  f_out_ << "</td>" << endl << "<td>";
+  map<string,string> data_types;
   if (!tprog->get_enums().empty()) {
-	f_out_ << "* " << "[Enumerations](" << make_file_link(fname) << "#enumerations)" << endl;
     vector<t_enum*> enums = tprog->get_enums();
     vector<t_enum*>::iterator en_iter;
     for (en_iter = enums.begin(); en_iter != enums.end(); ++en_iter) {
       string name = (*en_iter)->get_name();
-      f_out_ << "  * [" +  name + "](" + make_file_link(fname) + "#" + to_lower_case(name) + ")" << endl;
+      // f_out_ << "<a href=\"" << make_file_link(fname) << "#Enum_" << name << "\">" << name
+      // <<  "</a><br/>" << endl;
+      string html = "<a href=\"" + make_file_link(fname) + "#Enum_" + name + "\">" + name +
+        "</a>";
+      data_types.insert(pair<string,string>(name, html));
     }
   }
   if (!tprog->get_typedefs().empty()) {
-	f_out_ << "* " << "[Type declarations](" << make_file_link(fname) << "#type-declarations)" << endl;
     vector<t_typedef*> typedefs = tprog->get_typedefs();
     vector<t_typedef*>::iterator td_iter;
     for (td_iter = typedefs.begin(); td_iter != typedefs.end(); ++td_iter) {
       string name = (*td_iter)->get_symbolic();
-      f_out_ << "  * [" +  name + "](" + make_file_link(fname) + "#" + to_lower_case(name) + ")" << endl;
+      // f_out_ << "<a href=\"" << make_file_link(fname) << "#Typedef_" << name << "\">" << name
+      // << "</a><br/>" << endl;
+      string html = "<a href=\"" + make_file_link(fname) + "#Typedef_" + name + "\">" + name +
+        "</a>";
+      data_types.insert(pair<string,string>(name, html));
     }
   }
   if (!tprog->get_objects().empty()) {
-	f_out_ << "* " << "[Data structures](" << make_file_link(fname) << "#data-structures)" << endl;
-	vector<t_struct*> objects = tprog->get_objects();
+    vector<t_struct*> objects = tprog->get_objects();
     vector<t_struct*>::iterator o_iter;
     for (o_iter = objects.begin(); o_iter != objects.end(); ++o_iter) {
       string name = (*o_iter)->get_name();
-      f_out_ << "  * [" +  name + "](" + make_file_link(fname) + "#" + to_lower_case(name) + ")" << endl;
+      //f_out_ << "<a href=\"" << make_file_link(fname) << "#Struct_" << name << "\">" << name
+      //<< "</a><br/>" << endl;
+      string html = "<a href=\"" + make_file_link(fname) + "#Struct_" + name + "\">" + name +
+        "</a>";
+      data_types.insert(pair<string,string>(name, html));
     }
   }
+  for (map<string,string>::iterator dt_iter = data_types.begin();
+       dt_iter != data_types.end(); dt_iter++) {
+    f_out_ << dt_iter->second << "<br/>" << endl;
+  }
+  f_out_ << "</td>" << endl << "<td>";
   if (!tprog->get_consts().empty()) {
-	f_out_ << "* " << "[Constants](" << make_file_link(fname) << "#constants)" << endl;
+    map<string,string> const_html;
     vector<t_const*> consts = tprog->get_consts();
     vector<t_const*>::iterator con_iter;
     for (con_iter = consts.begin(); con_iter != consts.end(); ++con_iter) {
       string name = (*con_iter)->get_name();
-      f_out_ << "  * [" +  name + "](" + make_file_link(fname) + "#" + to_lower_case(name) + ")" << endl;
+      string html ="<code><a href=\"" + make_file_link(fname) + "#Const_" + name +
+        "\">" + name + "</a></code>";
+      const_html.insert(pair<string,string>(name, html));
+    }
+    for (map<string,string>::iterator con_iter = const_html.begin();
+   con_iter != const_html.end(); con_iter++) {
+      f_out_ << con_iter->second << "<br/>" << endl;
     }
   }
-  f_out_ << endl << endl;
+  f_out_ << "</code></td>" << endl << "</tr>";
 }
 
 /**
  * Prepares for file generation by opening up the necessary file output
  * stream.
  */
-void t_md_generator::generate_program() {
+void t_html_generator::generate_program() {
   // Make output directory
   MKDIR(get_out_dir().c_str());
-  current_file_ =  program_->get_name() + ".md";
+  current_file_ =  program_->get_name() + ".html";
   string fname = get_out_dir() + current_file_;
   f_out_.open(fname.c_str());
+  f_out_ << "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"" << endl;
+  f_out_ << "    \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">" << endl;
+  f_out_ << "<html xmlns=\"http://www.w3.org/1999/xhtml\">" << endl;
+  f_out_ << "<head>" << endl;
+  f_out_ << "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />" << endl;
+  generate_style_tag();
+  f_out_ << "<title>Thrift module: " << program_->get_name()
+   << "</title></head><body>" << endl
+   << "<div class=\"container-fluid\">" << endl
+   << "<h1>Thrift module: "
+   << program_->get_name() << "</h1>" << endl;
 
   print_doc(program_);
 
   generate_program_toc();
 
   if (!program_->get_consts().empty()) {
-    f_out_ << HDR_SECTION << "Constants" << endl;
+    f_out_ << "<hr/><h2 id=\"Constants\">Constants</h2>" << endl;
     vector<t_const*> consts = program_->get_consts();
+    f_out_ << "<table class=\"table-bordered table-striped table-condensed\">";
+    f_out_ << "<thead><th>Constant</th><th>Type</th><th>Value</th></thead>" << endl;
     generate_consts(consts);
+    f_out_ << "</table>";
   }
 
   if (!program_->get_enums().empty()) {
-	  f_out_ << HDR_SECTION << "Enumerations" << endl;
+    f_out_ << "<hr/><h2 id=\"Enumerations\">Enumerations</h2>" << endl;
     // Generate enums
     vector<t_enum*> enums = program_->get_enums();
     vector<t_enum*>::iterator en_iter;
     for (en_iter = enums.begin(); en_iter != enums.end(); ++en_iter) {
       generate_enum(*en_iter);
-      f_out_ << endl;
     }
   }
 
   if (!program_->get_typedefs().empty()) {
-    f_out_ << HDR_SECTION << "Type declarations" << endl;
+    f_out_ << "<hr/><h2 id=\"Typedefs\">Type declarations</h2>" << endl;
     // Generate typedefs
     vector<t_typedef*> typedefs = program_->get_typedefs();
     vector<t_typedef*>::iterator td_iter;
     for (td_iter = typedefs.begin(); td_iter != typedefs.end(); ++td_iter) {
       generate_typedef(*td_iter);
-      f_out_ << endl;
     }
   }
 
   if (!program_->get_objects().empty()) {
-    f_out_ << HDR_SECTION << "Data structures" << endl;
+    f_out_ << "<hr/><h2 id=\"Structs\">Data structures</h2>" << endl;
     // Generate structs and exceptions in declared order
     vector<t_struct*> objects = program_->get_objects();
     vector<t_struct*>::iterator o_iter;
@@ -271,46 +305,91 @@ void t_md_generator::generate_program() {
       } else {
         generate_struct(*o_iter);
       }
-      f_out_ << endl;
     }
   }
 
   if (!program_->get_services().empty()) {
-    f_out_ << HDR_SECTION << "Services" << endl;
+    f_out_ << "<hr/><h2 id=\"Services\">Services</h2>" << endl;
     // Generate services
     vector<t_service*> services = program_->get_services();
     vector<t_service*>::iterator sv_iter;
     for (sv_iter = services.begin(); sv_iter != services.end(); ++sv_iter) {
       service_name_ = get_service_name(*sv_iter);
       generate_service(*sv_iter);
-      f_out_ << endl;
     }
   }
 
+  f_out_ << "</div></body></html>" << endl;
   f_out_.close();
   
   generate_index();
+  generate_css();
 }
 
 
 /**
  * Emits the index.html file for the recursive set of Thrift programs
  */
-void t_md_generator::generate_index() {
-  current_file_ = "README.md";
+void t_html_generator::generate_index() {
+  current_file_ = "index.html";
   string index_fname = get_out_dir() + current_file_;
   f_out_.open(index_fname.c_str());
-  f_out_ << HDR_PROGRAM << "All Thrift declarations" << endl;
+  f_out_ << "<html><head>" << endl;
+  generate_style_tag();
+  f_out_ << "<title>All Thrift declarations</title></head><body>"
+   << endl << "<div class=\"container-fluid\">"
+   << endl << "<h1>All Thrift declarations</h1>" << endl;
+  f_out_ << "<table class=\"table-bordered table-striped table-condensed\"><thead><th>Module</th><th>Services</th><th>Data types</th>"
+   << "<th>Constants</th></thead>" << endl;
   vector<t_program*> programs;
   generate_program_toc_rows(program_, programs);
+  f_out_ << "</table>" << endl;
+  f_out_ << "</div></body></html>" << endl;
   f_out_.close();
+}
+
+void t_html_generator::generate_css() {
+  if( ! standalone_) {
+    current_file_ = "style.css";
+    string css_fname = get_out_dir() + current_file_;
+    f_out_.open(css_fname.c_str());
+    generate_css_content( f_out_);
+    f_out_.close();
+  }
+}
+
+
+void t_html_generator::generate_css_content(std::ofstream & f_target) {
+  f_target << BOOTSTRAP_CSS() << endl;
+  f_target << "/* Auto-generated CSS for generated Thrift docs */" << endl;
+  f_target << "h3, h4 { margin-bottom: 6px; }" << endl;
+  f_target << "div.definition { border: 1px solid #CCC; margin-bottom: 10px; padding: 10px; }" << endl;
+  f_target << "div.extends { margin: -0.5em 0 1em 5em }" << endl;
+  f_target << "td { vertical-align: top; }" << endl;
+  f_target << "table { empty-cells: show; }" << endl;
+  f_target << "code { line-height: 20px; }" << endl;
+  f_target << ".table-bordered th, .table-bordered td { border-bottom: 1px solid #DDDDDD; }" << endl;
+}
+
+/**
+ * Generates the CSS tag. 
+ * Depending on "standalone", either a CSS file link (default), or the entire CSS is embedded inline.
+ */
+void t_html_generator::generate_style_tag() {
+  if( ! standalone_) {
+    f_out_ << "<link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\"/>" << endl;
+  } else {
+    f_out_ << "<style type=\"text/css\"/><!--" << endl;
+    generate_css_content( f_out_);
+    f_out_ << "--></style>" << endl;
+  } 
 }
 
 /**
  * Returns the target file for a <a href> link 
  * The returned string is empty, whenever filename refers to the current file.
  */
-std::string t_md_generator::make_file_link( std::string filename) {
+std::string t_html_generator::make_file_link( std::string filename) {
   return (current_file_.compare(filename) != 0)  ?  filename  :  "";
 }
 
@@ -318,13 +397,13 @@ std::string t_md_generator::make_file_link( std::string filename) {
  * If the provided documentable object has documentation attached, this
  * will emit it to the output stream in HTML format.
  */
-void t_md_generator::print_doc(t_doc* tdoc) {
+void t_html_generator::print_doc(t_doc* tdoc) {
   if (tdoc->has_doc()) {
-    f_out_ << trim(tdoc->get_doc()) << endl;
+    f_out_ << escape_html(tdoc->get_doc()) << "<br/>";
   }
 }
 
-bool t_md_generator::is_utf8_sequence(std::string const & str, size_t firstpos) {
+bool t_html_generator::is_utf8_sequence(std::string const & str, size_t firstpos) {
   // leading char determines the length of the sequence
   unsigned char c = str.at(firstpos);
   int count = 0;
@@ -360,7 +439,7 @@ bool t_md_generator::is_utf8_sequence(std::string const & str, size_t firstpos) 
   return (0 == count);
 }
 
-void t_md_generator::detect_input_encoding(std::string const & str, size_t firstpos) {
+void t_html_generator::detect_input_encoding(std::string const & str, size_t firstpos) {
   if( is_utf8_sequence(str,firstpos))
   {
     pdebug( "Input seems to be already UTF-8 encoded");
@@ -373,7 +452,7 @@ void t_md_generator::detect_input_encoding(std::string const & str, size_t first
   input_type_ = INPUT_PLAIN;
 }
 
-void t_md_generator::init_allowed__markup() {
+void t_html_generator::init_allowed__markup() {
   allowed_markup.clear();
   // standalone tags
   allowed_markup["br"] = 1;
@@ -432,7 +511,7 @@ void t_md_generator::init_allowed__markup() {
   allowed_markup["/h6"] = 1;
 }
   
-std::string t_md_generator::escape_html_tags(std::string const & str) {
+std::string t_html_generator::escape_html_tags(std::string const & str) {
   std::ostringstream result;
 
   unsigned char c = '?';
@@ -503,7 +582,7 @@ std::string t_md_generator::escape_html_tags(std::string const & str) {
   return result.str();
 }
 
-std::string t_md_generator::escape_html(std::string const & str) {
+std::string t_html_generator::escape_html(std::string const & str) {
   // the generated HTML header says it is UTF-8 encoded
   // if UTF-8 input has been detected before, we don't need to change anything
   if( input_type_ == INPUT_UTF8) {
@@ -589,8 +668,9 @@ std::string t_md_generator::escape_html(std::string const & str) {
 /**
  * Prints out the provided type in HTML
  */
-int t_md_generator::print_type(t_type* ttype) {
+int t_html_generator::print_type(t_type* ttype) {
   int len = 0;
+  f_out_ << "<code>";
   if (ttype->is_container()) {
     if (ttype->is_list()) {
       f_out_ << "list&lt;";
@@ -613,28 +693,38 @@ int t_md_generator::print_type(t_type* ttype) {
   } else {
     string prog_name = ttype->get_program()->get_name();
     string type_name = ttype->get_name();
-    string fname = prog_name + ".md";
-    f_out_ << "[" << type_name << "](" << make_file_link(fname) << "#" << to_lower_case(type_name) << ")";
+    f_out_ << "<a href=\"" << prog_name << ".html#";
+    if (ttype->is_typedef()) {
+      f_out_ << "Typedef_";
+    } else if (ttype->is_struct() || ttype->is_xception()) {
+      f_out_ << "Struct_";
+    } else if (ttype->is_enum()) {
+      f_out_ << "Enum_";
+    } else if (ttype->is_service()) {
+      f_out_ << "Svc_";
+    }
+    f_out_ << type_name << "\">";
     len = type_name.size();
+    if (ttype->get_program() != program_) {
+      f_out_ << prog_name << ".";
+      len += prog_name.size() + 1;
+    }
+    f_out_ << type_name << "</a>";
   }
+  f_out_ << "</code>";
   return len;
 }
 
 /**
  * Prints out an HTML representation of the provided constant value
  */
-void t_md_generator::print_const_value(t_type* type, t_const_value* tvalue) {
+void t_html_generator::print_const_value(t_type* type, t_const_value* tvalue) {
 
   // if tvalue is an indentifier, the constant content is already shown elsewhere
   if (tvalue->get_type() == t_const_value::CV_IDENTIFIER) {
-    string fname = program_->get_name() + ".md";
-    string name = tvalue->get_identifier();
-    size_t s = name.find('.');
-    if (s > string::npos) {
-    	name = name.substr(0, s);
-    }
-    name = escape_html(name);
-    f_out_ << "`[" << name << "](" << make_file_link(fname) << "#" << to_lower_case(name) << ")`";
+    string fname = program_->get_name() + ".html";
+    string name = escape_html( tvalue->get_identifier());
+    f_out_ << "<code><a href=\"" + make_file_link(fname) + "#Const_" + name +"\">" + name + "</a></code>";
     return;
   }
   
@@ -747,7 +837,7 @@ void t_md_generator::print_const_value(t_type* type, t_const_value* tvalue) {
 /**
  * Prints out documentation for arguments/exceptions of a function, if any documentation has been supplied.
  */
-void t_md_generator::print_fn_args_doc(t_function* tfunction) {
+void t_html_generator::print_fn_args_doc(t_function* tfunction) {
   bool has_docs = false;
   vector<t_field*> args = tfunction->get_arglist()->get_members();
   vector<t_field*>::iterator arg_iter = args.begin();
@@ -758,14 +848,17 @@ void t_md_generator::print_fn_args_doc(t_function* tfunction) {
     }
     if (has_docs) {
       arg_iter = args.begin();
-      f_out_ << HDR_ARGS << "Parameters" << endl;
-      f_out_ << "| Name | Description |";
+      f_out_ << "<br/><h4 id=\"Parameters_" << service_name_ << "_" << tfunction->get_name()
+        << "\">Parameters</h4>" << endl;
+      f_out_ << "<table class=\"table-bordered table-striped table-condensed\">";
+      f_out_ << "<thead><th>Name</th><th>Description</th></thead>";
       for ( ; arg_iter != args.end(); arg_iter++) {
-        f_out_ << "| " << (*arg_iter)->get_name();
-        f_out_ << " | ";
-        f_out_ << (*arg_iter)->get_doc();
-        f_out_ << " |" << endl;
+        f_out_ << "<tr><td>" << (*arg_iter)->get_name();
+        f_out_ << "</td><td>";
+        f_out_ << escape_html( (*arg_iter)->get_doc());
+        f_out_ << "</td></tr>" << endl;
       }
+      f_out_ << "</table>";
     }
   }
 
@@ -779,14 +872,17 @@ void t_md_generator::print_fn_args_doc(t_function* tfunction) {
     }
     if (has_docs) {
       ex_iter = excepts.begin();
-      f_out_ << HDR_ARGS << "Exceptions" << endl;
-      f_out_ << "| Type | Description |";
+      f_out_ << "<br/><h4 id=\"Exceptions_" << service_name_ << "_" << tfunction->get_name()
+        << "\">Exceptions</h4>" << endl;
+      f_out_ << "<table class=\"table-bordered table-striped table-condensed\">";
+      f_out_ << "<thead><th>Type</th><th>Description</th></thead>";
       for ( ; ex_iter != excepts.end(); ex_iter++) {
-        f_out_ << "| " << (*ex_iter)->get_type()->get_name();
-        f_out_ << " | ";
-        f_out_ << (*ex_iter)->get_doc();
-        f_out_ << " |" << endl;
+        f_out_ << "<tr><td>" << (*ex_iter)->get_type()->get_name();
+        f_out_ << "</td><td>";
+        f_out_ << escape_html( (*ex_iter)->get_doc());
+        f_out_ << "</td></tr>" << endl;
       }
+      f_out_ << "</table>";
     }
   }
 }
@@ -796,14 +892,16 @@ void t_md_generator::print_fn_args_doc(t_function* tfunction) {
  *
  * @param ttypedef The type definition
  */
-void t_md_generator::generate_typedef(t_typedef* ttypedef) {
+void t_html_generator::generate_typedef(t_typedef* ttypedef) {
   string name = ttypedef->get_name();
-  f_out_ << HDR_TYPDEF << name << endl;
-  f_out_ << "Base type: ";
+  f_out_ << "<div class=\"definition\">";
+  f_out_ << "<h3 id=\"Typedef_" << name << "\">Typedef: " << name
+   << "</h3>" << endl;
+  f_out_ << "<p><strong>Base type:</strong>&nbsp;";
   print_type(ttypedef->get_type());
-  f_out_ << endl << "  * ";
+  f_out_ << "</p>" << endl;
   print_doc(ttypedef);
-  f_out_ << endl;
+  f_out_ << "</div>" << endl;
 }
 
 /**
@@ -811,35 +909,43 @@ void t_md_generator::generate_typedef(t_typedef* ttypedef) {
  *
  * @param tenum The enumeration
  */
-void t_md_generator::generate_enum(t_enum* tenum) {
+void t_html_generator::generate_enum(t_enum* tenum) {
   string name = tenum->get_name();
-  f_out_ << HDR_ENUM << name << endl;
+  f_out_ << "<div class=\"definition\">";
+  f_out_ << "<h3 id=\"Enum_" << name << "\">Enumeration: " << name
+   << "</h3>" << endl;
   print_doc(tenum);
   vector<t_enum_value*> values = tenum->get_constants();
   vector<t_enum_value*>::iterator val_iter;
+  f_out_ << "<br/><table class=\"table-bordered table-striped table-condensed\">" << endl;
   for (val_iter = values.begin(); val_iter != values.end(); ++val_iter) {
-    f_out_ << "* **" << (*val_iter)->get_name() << "**";
-    f_out_ << " ` ";
+    f_out_ << "<tr><td><code>";
+    f_out_ << (*val_iter)->get_name();
+    f_out_ << "</code></td><td><code>";
     f_out_ << (*val_iter)->get_value();
-    f_out_ << " `:  ";
+    f_out_ << "</code></td><td>" << endl;
     print_doc((*val_iter));
-    f_out_ << endl;
+    f_out_ << "</td></tr>" << endl;
   }
-  f_out_ << endl << endl;
+  f_out_ << "</table></div>" << endl;
 }
 
 /**
  * Generates a constant value
  */
-void t_md_generator::generate_const(t_const* tconst) {
+void t_html_generator::generate_const(t_const* tconst) {
   string name = tconst->get_name();
-  f_out_ << "* **" << name << "** ";
+  f_out_ << "<tr id=\"Const_" << name << "\"><td><code>" << name
+   << "</code></td><td>";
   print_type(tconst->get_type());
-  f_out_ << " ` ";
+  f_out_ << "</td><td><code>";
   print_const_value(tconst->get_type(), tconst->get_value());
-  f_out_ << " `:  ";
-  print_doc(tconst);
-  f_out_ << endl << endl;
+  f_out_ << "</code></td></tr>";
+  if (tconst->has_doc()) {
+    f_out_ << "<tr><td colspan=\"3\"><blockquote>";
+    print_doc(tconst);
+    f_out_ << "</blockquote></td></tr>";
+  }
 }
 
 /**
@@ -847,35 +953,50 @@ void t_md_generator::generate_const(t_const* tconst) {
  *
  * @param tstruct The struct definition
  */
-void t_md_generator::generate_struct(t_struct* tstruct) {
+void t_html_generator::generate_struct(t_struct* tstruct) {
   string name = tstruct->get_name();
-  f_out_ << HDR_STRUCT << name << endl;
-  print_doc(tstruct);
+  f_out_ << "<div class=\"definition\">";
+  f_out_ << "<h3 id=\"Struct_" << name << "\">";
+  if (tstruct->is_xception()) {
+    f_out_ << "Exception: ";
+  } else if (tstruct->is_union()) {
+    f_out_ << "Union: ";
+  } else {
+    f_out_ << "Struct: ";
+  }
+  f_out_ << name << "</h3>" << endl;
   vector<t_field*> members = tstruct->get_members();
   vector<t_field*>::iterator mem_iter = members.begin();
+  f_out_ << "<table class=\"table-bordered table-striped table-condensed\">";
+  f_out_ << "<thead><th>Key</th><th>Field</th><th>Type</th><th>Description</th><th>Requiredness</th><th>Default value</th></thead>"
+    << endl;
   for ( ; mem_iter != members.end(); mem_iter++) {
-    f_out_ << "* ` " << (*mem_iter)->get_key() << "` ";
-    f_out_ << " **" << (*mem_iter)->get_name() << "**";
-    f_out_ << " (";
+    f_out_ << "<tr><td>" << (*mem_iter)->get_key() << "</td><td>";
+    f_out_ << (*mem_iter)->get_name();
+    f_out_ << "</td><td>";
     print_type((*mem_iter)->get_type());
-    f_out_ << ") ";
+    f_out_ << "</td><td>";
+    f_out_ << escape_html( (*mem_iter)->get_doc());
+    f_out_ << "</td><td>";
     if ((*mem_iter)->get_req() == t_field::T_OPTIONAL) {
-      f_out_ << " *optional* ";
+      f_out_ << "optional";
     } else if ((*mem_iter)->get_req() == t_field::T_REQUIRED) {
-      f_out_ << " *required* ";
+      f_out_ << "required";
     } else {
-      f_out_ << " *default* ";
+      f_out_ << "default";
     }
-    f_out_ << ":  ";
-    print_doc((*mem_iter));
+    f_out_ << "</td><td>";
     t_const_value* default_val = (*mem_iter)->get_value();
     if (default_val != NULL) {
-      f_out_ << "`";
+      f_out_ << "<code>";
       print_const_value((*mem_iter)->get_type(), default_val);
-      f_out_ << "`";
+      f_out_ << "</code>";
     }
-    f_out_ << endl;
+    f_out_ << "</td></tr>" << endl;
   }
+  f_out_ << "</table><br/>";
+  print_doc(tstruct);
+  f_out_ << "</div>";
 }
 
 /**
@@ -883,7 +1004,7 @@ void t_md_generator::generate_struct(t_struct* tstruct) {
  *
  * @param tstruct The struct definition
  */
-void t_md_generator::generate_xception(t_struct* txception) {
+void t_html_generator::generate_xception(t_struct* txception) {
   generate_struct(txception);
 }
 
@@ -892,21 +1013,25 @@ void t_md_generator::generate_xception(t_struct* txception) {
  *
  * @param tservice The service definition
  */
-void t_md_generator::generate_service(t_service* tservice) {
-  f_out_ << HDR_SERVICE << service_name_ << endl;
+void t_html_generator::generate_service(t_service* tservice) {
+  f_out_ << "<h3 id=\"Svc_" << service_name_ << "\">Service: "
+    << service_name_ << "</h3>" << endl;
 
   if (tservice->get_extends()) {
-    f_out_ << "extends ";
+    f_out_ << "<div class=\"extends\"><em>extends</em> ";
     print_type(tservice->get_extends());
-    f_out_ << endl;
+    f_out_ << "</div>\n";
   }
   print_doc(tservice);
   vector<t_function*> functions = tservice->get_functions();
   vector<t_function*>::iterator fn_iter = functions.begin();
   for ( ; fn_iter != functions.end(); fn_iter++) {
     string fn_name = (*fn_iter)->get_name();
-    f_out_ << HDR_FUNCTION << fn_name << endl;
-    f_out_ << " *";
+    f_out_ << "<div class=\"definition\">";
+    f_out_ << "<h4 id=\"Fn_" << service_name_ << "_" << fn_name
+      << "\">Function: " << service_name_ << "." << fn_name
+      << "</h4>" << endl;
+    f_out_ << "<pre>";
     int offset = print_type((*fn_iter)->get_returntype());
     bool first = true;
     f_out_ << " " << fn_name << "(";
@@ -915,7 +1040,10 @@ void t_md_generator::generate_service(t_service* tservice) {
     vector<t_field*>::iterator arg_iter = args.begin();
     for ( ; arg_iter != args.end(); arg_iter++) {
       if (!first) {
-        f_out_ << ",";
+        f_out_ << "," << endl;
+        for (int i = 0; i < offset; ++i) {
+          f_out_ << " ";
+        }
       }
       first = false;
       print_type((*arg_iter)->get_type());
@@ -925,7 +1053,7 @@ void t_md_generator::generate_service(t_service* tservice) {
         print_const_value((*arg_iter)->get_type(), (*arg_iter)->get_value());
       }
     }
-    f_out_ << ")";
+    f_out_ << ")" << endl;
     first = true;
     vector<t_field*> excepts = (*fn_iter)->get_xceptions()->get_members();
     vector<t_field*>::iterator ex_iter = excepts.begin();
@@ -940,35 +1068,14 @@ void t_md_generator::generate_service(t_service* tservice) {
       }
       f_out_ << endl;
     }
-    f_out_ << "*" << endl << endl;
+    f_out_ << "</pre>";
     print_doc(*fn_iter);
     print_fn_args_doc(*fn_iter);
-    f_out_ << endl;
+    f_out_ << "</div>";
   }
 }
 
-string t_md_generator::to_lower_case(string name) {
-  string s (name);
-  std::transform (s.begin(), s.end(), s.begin(), ::tolower);
-  return s;
-//  return boost::to_lower_copy (name);
-}
-
-// trim from start
-static std::string ltrim(std::string s) {
-	s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
-	return s;
-}
-
-// trim from end
-static std::string rtrim(std::string s) {
-	s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-	return s;
-}
-
-// trim from both ends
-static std::string trim(std::string s) {
-	return ltrim(rtrim(s));
-}
-
-THRIFT_REGISTER_GENERATOR(md, "markdown", "")
+THRIFT_REGISTER_GENERATOR(html, "HTML",
+"    standalone:      Self-contained mode, includes all CSS in the HTML files.\n"
+"                     Generates no style.css file, but HTML files will be larger.\n"
+)
